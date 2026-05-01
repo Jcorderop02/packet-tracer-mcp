@@ -1,0 +1,49 @@
+name: Feature request
+description: Proponer una tool, receta o capacidad nueva
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de proponer, comprueba que:
+
+        - No esté ya en `docs/COVERAGE.md` como `dead-end` (la API JS de
+          PT 9 no lo soporta).
+        - No esté ya cubierto por alguna de las 57 tools (`pt_list_recipes`,
+          `pt_list_devices`).
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Caso de uso
+      description: Qué problema resuelve, no la solución técnica
+      placeholder: |
+        Quiero levantar un lab de N sucursales con BGP entre ellas y un
+        edge MPLS, ahora mismo lo hago a mano y se hace muy largo.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta concreta
+      description: Tool nueva, parámetros que tendría, output esperado
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas que has considerado
+      description: ¿Se puede hacer combinando tools existentes?
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmaciones
+      options:
+        - label: He leído `docs/COVERAGE.md` y la pieza no está como `dead-end`
+          required: true
+        - label: He revisado las recetas existentes con `pt_list_recipes`
+          required: true
