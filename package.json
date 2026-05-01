@@ -1,7 +1,7 @@
 {
   "name": "packet-tracer-mcp",
-  "mcpName": "io.github.jcorderop02/packet-tracer-mcp",
-  "version": "0.1.0",
+  "mcpName": "io.github.Jcorderop02/packet-tracer-mcp",
+  "version": "0.1.1",
   "description": "Servidor MCP (Model Context Protocol) para Cisco Packet Tracer 9 — permite que un LLM como Claude o ChatGPT cree, edite y valide topologías de red en vivo (routers Cisco, switches, VLANs, OSPF, EIGRP, BGP, NAT, ACLs, VoIP, QoS, IPv6, wireless) a través del árbol IPC nativo del Script Engine de PT.",
   "author": "Juan Cordero Pascual <jcorderop@hotmail.es>",
   "license": "MIT",
