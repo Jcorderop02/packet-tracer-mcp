@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Pregunta general
+    url: https://github.com/jcorderop02/packet-tracer-mcp/discussions
+    about: Para dudas de uso, ideas no concretas o pedir ayuda con un setup. Para bugs y features usa los templates específicos.
