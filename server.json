@@ -3,9 +3,9 @@
   "name": "io.github.jcorderop02/packet-tracer-mcp",
   "description": "MCP server for Cisco Packet Tracer 9 — live IOS, OSPF, BGP, NAT, VLAN, VoIP, QoS, IPv6, wireless.",
   "version": "0.1.0",
-  "websiteUrl": "https://github.com/jcorderop02/packet-tracer-mcp#readme",
+  "websiteUrl": "https://github.com/Jcorderop02/packet-tracer-mcp#readme",
   "repository": {
-    "url": "https://github.com/jcorderop02/packet-tracer-mcp",
+    "url": "https://github.com/Jcorderop02/packet-tracer-mcp",
     "source": "github"
   },
   "packages": [
