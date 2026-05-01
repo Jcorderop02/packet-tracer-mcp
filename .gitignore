@@ -40,3 +40,4 @@ scripts/diff-pt-api.ts
 scripts/probe-*.ts
 scripts/smoke.ts
 extension-python
+docs/RELEASING.md

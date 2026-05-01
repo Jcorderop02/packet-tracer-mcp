@@ -54,6 +54,14 @@
   "bin": {
     "packet-tracer-mcp": "src/index.ts"
   },
+  "files": [
+    "src",
+    "extension/dist/*.pts",
+    "server.json",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
   "engines": {
     "bun": ">=1.2.0"
   },
