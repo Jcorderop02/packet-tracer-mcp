@@ -1,0 +1,91 @@
+name: Bug report
+description: Algo no funciona como debería contra Packet Tracer 9
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportar. Para que el bug sea reproducible necesito
+        saber con qué versión de PT y qué comando exacto lo disparó.
+        Sin esos datos no se puede arreglar.
+
+  - type: input
+    id: pt-version
+    attributes:
+      label: Versión de Packet Tracer
+      description: "`Help > About` dentro de PT. Ejemplo: 9.0.0.0810"
+      placeholder: "9.0.0.0810"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Sistema operativo
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows 10
+        - Windows 11
+        - Linux
+    validations:
+      required: true
+
+  - type: input
+    id: bun-version
+    attributes:
+      label: Versión de Bun
+      description: "Salida de `bun --version`"
+      placeholder: "1.2.x"
+    validations:
+      required: true
+
+  - type: input
+    id: mcp-version
+    attributes:
+      label: Versión de packet-tracer-mcp
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Comando MCP que disparó el bug
+      description: Tool + parámetros exactos
+      render: text
+      placeholder: |
+        pt_cook_topology recipe='campus_vlan' params={vlanCount:3, pcsPerVlan:2}
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Qué esperabas
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Qué pasó
+      description: |
+        Pega el output del MCP y, si aplica, lo que se ve en PT. Una
+        captura del canvas vale más que un párrafo.
+    validations:
+      required: true
+
+  - type: input
+    id: bridge-status
+    attributes:
+      label: Salida de `pt_bridge_status`
+      description: "¿`connected: true`? ¿amarillo / rojo en la ventana de la extensión?"
+      placeholder: "connected: true"
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Contexto adicional
+      description: Logs, screenshots, lo que sea relevante

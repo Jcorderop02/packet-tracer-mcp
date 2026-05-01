@@ -1,0 +1,36 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.jcorderop02/packet-tracer-mcp",
+  "description": "MCP server for Cisco Packet Tracer 9 — live IOS, OSPF, BGP, NAT, VLAN, VoIP, QoS, IPv6, wireless.",
+  "version": "0.1.0",
+  "websiteUrl": "https://github.com/Jcorderop02/packet-tracer-mcp#readme",
+  "repository": {
+    "url": "https://github.com/Jcorderop02/packet-tracer-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "packet-tracer-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "bun",
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "--stdio"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "BRIDGE_PORT",
+          "description": "Port for the internal HTTP bridge that talks to the Packet Tracer 9 webview (default: 54321)",
+          "isRequired": false,
+          "default": "54321"
+        }
+      ]
+    }
+  ]
+}

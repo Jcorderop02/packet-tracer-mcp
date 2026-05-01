@@ -1,0 +1,43 @@
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+*.log
+.idea/
+.vscode/
+
+*.pkt
+*.pka
+*.pkz
+tmp/
+out/
+
+docs/probe-runs/
+docs/pt-api/
+docs/screenshots/
+docs/smoke-runs/
+
+# Internal verification log (the source of truth with implementation-level
+# detail). The public-facing summary lives in docs/COVERAGE.md.
+docs/VERIFIED.md
+
+# Internal planning doc with phase-level detail and references to private
+# probe artefacts. Kept private; users get the public docs in docs/.
+docs/ROADMAP.md
+
+# Extension source stays private; only the packaged .pts ships publicly.
+# Note: gitignore won't recurse into a directory that is itself ignored,
+# so we ignore the contents and re-include the .pts artefacts explicitly.
+extension/*
+!extension/*.pts
+!extension/dist
+extension/dist/*
+!extension/dist/*.pts
+
+scripts/crawl-pt-api.ts
+scripts/diff-pt-api.ts
+scripts/probe-*.ts
+scripts/smoke.ts
+extension-python
+docs/RELEASING.md
