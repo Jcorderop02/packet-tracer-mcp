@@ -1,7 +1,7 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.jcorderop02/packet-tracer-mcp",
-  "description": "Servidor MCP para Cisco Packet Tracer 9 — permite que un LLM como Claude o ChatGPT cree, edite y valide topologías de red en vivo (Cisco IOS, OSPF, EIGRP, BGP, NAT, ACLs, VoIP, QoS, IPv6, wireless) a través del árbol IPC nativo del Script Engine de PT.",
+  "description": "MCP server for Cisco Packet Tracer 9 — live IOS, OSPF, BGP, NAT, VLAN, VoIP, QoS, IPv6, wireless.",
   "version": "0.1.0",
   "websiteUrl": "https://github.com/jcorderop02/packet-tracer-mcp#readme",
   "repository": {
