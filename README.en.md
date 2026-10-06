@@ -10,8 +10,8 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6?style=flat-square&logo=typescript&logoColor=white)
 
 ![CI](https://img.shields.io/github/actions/workflow/status/jcorderop02/packet-tracer-mcp/ci.yml?style=flat-square&label=CI&branch=main)
-![Tests](https://img.shields.io/badge/Tests-348%20passing-success?style=flat-square)
-![MCP tools](https://img.shields.io/badge/MCP%20tools-57-blueviolet?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-400%20passing-success?style=flat-square)
+![MCP tools](https://img.shields.io/badge/MCP%20tools-69-blueviolet?style=flat-square)
 ![Last commit](https://img.shields.io/github/last-commit/jcorderop02/packet-tracer-mcp?style=flat-square&label=Last%20commit)
 [![PRs welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square)](https://github.com/jcorderop02/packet-tracer-mcp/issues)
 
@@ -168,7 +168,7 @@ claude mcp add --transport http packet-tracer http://127.0.0.1:39001/mcp
 ```
 
 Verify with `/mcp` inside Claude Code: `packet-tracer` should appear
-with its 57 tools.
+with its 69 tools.
 </details>
 
 <details>
@@ -253,7 +253,7 @@ curl -sS -X POST http://127.0.0.1:39001/mcp \
 ```
 
 It must return a `result` with `serverInfo.name = "packet-tracer-mcp"`.
-A second POST with `"method":"tools/list"` returns all 57 tools with
+A second POST with `"method":"tools/list"` returns all 69 tools with
 their `inputSchema`.
 </details>
 
@@ -347,6 +347,16 @@ pre-flight review for ≥3-router topologies), `pt_apply_switching`,
 Server-PT via native IPC API), `pt_configure_subinterface` (802.1Q
 sub-interfaces for router-on-a-stick), `pt_apply_advanced_routing`,
 `pt_apply_ipv6`, `pt_apply_voip`, `pt_apply_wireless`.
+
+### Endpoints, WRT, DNS and WiFi
+
+`pt_read_endpoint`, `pt_configure_wireless_router`, `pt_read_wireless_router`,
+`pt_configure_dns`, `pt_read_dns`, `pt_verify_dns`, `pt_read_server_dhcp`,
+`pt_install_wireless_adapter`, `pt_read_wireless_client`, and
+`pt_associate_default_wireless` configure and read back the live canvas.
+Automatic association is limited to the open `Default` profile tested with
+WPC300N on PT 9.0.1; generic `wifi_lan` remains unsupported.
+Validation on the required PT 9.0.0.0810 build is still pending.
 
 ### Snapshots (no plans)
 
@@ -567,3 +577,7 @@ Tested against **Cisco Packet Tracer 9.0.0.0810**:
 
 Detailed evidence (smoke runs, screenshots, and known limitations)
 lives in [`docs/COVERAGE.md`](docs/COVERAGE.md).
+
+`pt_checkpoint_pkt` creates numbered, checksummed saves and optionally verifies
+reload persistence. `pt_latest_checkpoint` verifies the last confirmed save.
+See [integration behavior and limits](docs/integration/mejoras.md).

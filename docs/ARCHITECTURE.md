@@ -16,7 +16,7 @@ flowchart TD
     subgraph Server["packet-tracer-mcp · Bun + TypeScript"]
         direction TB
         Transport["Transporte MCP<br/>HTTP /mcp · streamable"]
-        Tools["Capa de tools<br/>57 tools · src/tools/"]
+        Tools["Capa de tools<br/>69 tools · src/tools/"]
 
         subgraph Domain["Dominio"]
             direction LR
@@ -73,7 +73,7 @@ guarda *snapshots* en disco, nunca planes, así que recargar un proyecto
 significa diffear la verdad de ayer contra la de hoy. Los archivos
 binarios `.pkt` nativos de PT se manejan aparte vía `src/ipc/files.ts`.
 
-## Tools MCP (57 en `src/tools/`)
+## Tools MCP (69 en `src/tools/`)
 
 Cada tool es un módulo independiente con su propio esquema de entrada,
 su builder JS y su decoder. Agruparlas por dominio:
@@ -108,6 +108,21 @@ su builder JS y su decoder. Agruparlas por dominio:
 - **Simulación y operaciones**: `pt_simulation_mode`,
   `pt_simulation_play`, `pt_send_pdu`, `pt_ping`, `pt_traceroute`,
   `pt_screenshot`.
+
+- **Endpoints/WRT/DNS/WiFi**: `pt_read_endpoint`,
+  `pt_configure_wireless_router`, `pt_read_wireless_router`, `pt_configure_dns`,
+  `pt_read_dns`, `pt_verify_dns`, `pt_read_server_dhcp`,
+  `pt_install_wireless_adapter`, `pt_read_wireless_client`,
+  `pt_associate_default_wireless`.
+- **Checkpoints confirmados**: `pt_checkpoint_pkt`, `pt_latest_checkpoint`.
+
+Las nuevas tools exportan `InputSchema`, `buildJs` y `decodeReply`, con tests
+independientes en `tests/tools/`. La CLI comparte un runner serializado por
+dispositivo; usa offsets de salida, paginación y espera de finalización. El
+bridge correlaciona respuestas por identificador, descarta resultados tardíos
+y transporta Unicode en un envelope JSON ASCII compatible con la extensión.
+Los checkpoints registran archivos estables y SHA-256; verificar persistencia
+reemplaza explícitamente el lienzo sólo después de confirmar una copia.
 
 Mantenerlas separadas habilita servidores composables (build read-only,
 build solo-lab, etc.) re-exportando subconjuntos de `ALL_TOOLS`.
@@ -248,7 +263,8 @@ en PT 9.0.0.0810 (verificado por probe, ver `docs/COVERAGE.md`).
   `setEncryptType` se persisten contra el modelo de PT, pero la API JS
   no expone forma de que el cliente *asocie* contra un AP. El contador
   de redes vistas se queda en cero, así que la receta `wifi_lan` se
-  marca como `partial`.
+  marca como `partial`. El flujo dedicado abierto Default con WPC300N
+  se probó en PT 9.0.1, pero no hay validación de ese flujo en 9.0.0.0810.
 - **Creación programática de clusters lógicos.**
   `LogicalWorkspace.addCluster()` opera sobre la selección actual del
   UI y no hay IPC para programarla desde fuera. `pt_manage_clusters`

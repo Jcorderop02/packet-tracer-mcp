@@ -1,3 +1,4 @@
+import { hierarchyLayout } from "./hierarchy-layout.js";
 /**
  * Layout policy for the live PT canvas — v2 (subtree-width tree layout).
  *
@@ -249,6 +250,8 @@ function spreadAround(cx: number, count: number, spacing: number): number[] {
  * `moveDevice` calls.
  */
 export function gridLayoutCanvas(snapshot: CanvasSnapshot): readonly { name: string; x: number; y: number }[] {
+  const hierarchical = hierarchyLayout(snapshot);
+  if (hierarchical !== null) return hierarchical;
   // ---------------- Adyacencia ----------------
   const neighbors = new Map<string, Set<string>>();
   for (const link of snapshot.links) {

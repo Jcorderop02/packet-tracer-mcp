@@ -115,10 +115,9 @@ desalineado donde nada se ve.
   lugar de dejar que `pt_add_device` o `pt_auto_layout` decidan.
 - ❌ **No esperar al diálogo de configuración inicial** del ISR. Tras
   añadir un router, espera ~3 s antes de mandarle CLI, o envía `no`
-  primero para salir del wizard (`Continue with configuration dialog?`).
+  sólo si aparece el wizard para salir (`Continue with configuration dialog?`).
 - ❌ **Mezclar configuración IP con hostname en el mismo bulk** sin
-  pasar antes por `enable`. `pt_run_cli_bulk` ya entra en modo
-  privilegiado; úsalo.
+  pasar antes por `enable`. incluye `enable` explícitamente al inicio del bloque.
 - ⚠️ **`switchport trunk encapsulation dot1q` depende del modelo de
   switch — no es genérico:**
   - **2950 / 2960**: el parser NO reconoce el subcomando (sólo
@@ -180,8 +179,7 @@ no surtan efecto. **Verifica siempre**:
 - ❌ **No fuerces nombres de puerto** que no existan en el modelo. Si
   no estás seguro: `pt_get_device_details` lista los puertos reales.
 - ❌ **No mezcles configuración IP y hostname** en un mismo
-  `pt_run_cli_bulk` sin tener en cuenta el modo. La tool ya entra a
-  privileged mode, pero si emites comandos en orden incorrecto te
+  `pt_run_cli_bulk` sin tener en cuenta el modo. Incluye `enable` al inicio del bloque; pero si emites comandos en orden incorrecto te
   quedas en config sin salir.
 - ❌ **No uses `pt_send_raw` como atajo** para evitar
   `pt_create_link`. Saltarse la validación de `confirm_internal_lan`
@@ -199,7 +197,7 @@ Cuando una operación legítima no la cubre ninguna tool específica:
   acabas usándolo más de una vez para lo mismo, abre un issue: hace
   falta una tool dedicada.
 - `pt_run_cli` para una sola línea CLI; `pt_run_cli_bulk` para varias.
-  Ambos entran en `enable` automáticamente.
+  Indica `mode="enable"` o incluye `enable` explícitamente.
 - `pt_load_snapshot` / `pt_save_snapshot` para checkpointing
   rápido del canvas durante experimentos. NO sustituye a `pt_save_pkt`
   para persistencia real.
@@ -207,7 +205,9 @@ Cuando una operación legítima no la cubre ninguna tool específica:
 ## 10. Cosas que actualmente **no son posibles** (limitaciones PT 9)
 
 - **Asociación radio cliente ↔ AP**: la API JS persiste SSID/auth/key
-  pero nunca dispara la asociación. El cliente no detecta APs (count=0).
+  de perfiles arbitrarios no está verificada. El flujo abierto `Default` de
+  notebooks con WPC300N sí tiene un procedimiento comprobado: usa
+  `pt_associate_default_wireless` y verifica la MAC del AP.
 - **Eventos reactivos**: `registerObjectEvent` es stub; acepta
   cualquier nombre y nunca entrega callbacks. Toda detección de
   cambios va por polling.

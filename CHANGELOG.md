@@ -17,6 +17,35 @@ y el versionado sigue [SemVer](https://semver.org/spec/v2.0.0.html).
 
 Cambios en `main` que aún no han salido en una release etiquetada.
 
+### Added
+
+- Twelve endpoint/WRT/DNS/DHCP/WiFi and confirmed-checkpoint MCP tools,
+  with schemas/builders/decoders exported per module and offline tests.
+- Native PT 9.0.1 integration fixture; validation on PT 9.0.0.0810 is pending.
+
+### Fixed
+
+- Correlate bridge responses, discard late replies and preserve Unicode.
+- Count only valid echo replies; distinguish incomplete, DNS and unreachable results.
+- Wait for CLI completion, advance pagination and stop blocks on command errors.
+- Respect requested DHCP ports and accept `OK:…`; configure static endpoint DNS.
+- Preserve Server-PT `serverPool` and reject overlapping/invalid DHCP ranges.
+- Keep switch cascades and observed WiFi associations at their actual layout depths.
+
+### Changed
+
+- **Compatibility:** `pt_run_cli`/`pt_run_cli_bulk` now return per-command JSON
+  with errors/timeouts; bulk stops at the first failure. Include `enable`
+  explicitly or use `mode` on the single-command tool.
+- **Compatibility:** `pt_set_pc` returns observed interfaces and rejects static
+  fields in DHCP mode; its omitted DHCP port is auto-selected.
+- **Compatibility:** deleting `serverPool` is rejected because PT may recreate
+  an overlapping pool on reload. Update its range instead.
+- **Compatibility:** partial/DNS-failed ping results now set `isError` instead
+  of presenting partial output as completed success. Cascaded layouts change
+  category-only row positions to preserve parent depth.
+
+
 ---
 
 ## [0.1.0] — 2026-05-01

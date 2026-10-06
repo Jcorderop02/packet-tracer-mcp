@@ -271,11 +271,11 @@ export function enterCommandJs(deviceName: string, command: string, _mode = ""):
  * `Would you like to enter the initial configuration dialog? [yes/no]:`
  * prompt, so freshly added routers/switches stall there and every command
  * from the bulk gets fed to the wizard instead of the IOS parser. We
- * silently emit three idempotent lines (empty, "no", empty) before the
- * caller's commands. They clear the dialog if it is showing and are
- * harmless on a device already at `>`/`#`. The `BULK|<count>|...` header
+ * send "no" only when the tail ends in the actual [yes/no] wizard
+ * question. A bare "no" at a normal prompt can trigger DNS translation. The `BULK|<count>|...` header
  * still reports only the caller's command count — the dismissal trio is
- * an internal preamble.
+ * an internal preamble. This generator remains synchronous; use the
+ * asynchronous CLI tools for pagination or commands requiring completion.
  *
  * Reply protocol — first line carries metadata, the rest is the slice of
  * `getOutput()` produced by this batch:
@@ -288,7 +288,7 @@ export function enterCommandJs(deviceName: string, command: string, _mode = ""):
 export function bulkCliJs(deviceName: string, cliBlock: string, tailChars = 2000): string {
   const lines = cliBlock.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
   const userCalls = lines.map(line => `cl.enterCommand(${jsStr(line)})`).join(";");
-  const dismissCalls = `cl.enterCommand("");cl.enterCommand("no");cl.enterCommand("")`;
+  const dismissCalls = `if(/configuration dialog.*\\[yes\\/no\\]:\\s*$/i.test(cl.getOutput().slice(-500))){cl.enterCommand("no");cl.enterCommand("");}`;
   return withLabel(
     `Configurando ${deviceName}: ${describeCliBlock(lines)}`,
     `(function(){` +
@@ -346,7 +346,7 @@ export function dismissBootDialogJs(deviceName: string): string {
       `if(!d)return "ERR:not_found";` +
       `var cl=d.getCommandLine();` +
       `cl.enterCommand("");` +
-      `cl.enterCommand("no");` +
+      `if(/configuration dialog.*\\[yes\\/no\\]:\\s*$/i.test(cl.getOutput().slice(-500)))cl.enterCommand("no");` +
       `cl.enterCommand("");` +
       `return String(cl.getPrompt()||"");` +
     `})()`,
@@ -405,6 +405,7 @@ export interface EndpointStaticIp {
   readonly ip: string;
   readonly mask: string;
   readonly gateway?: string;
+  readonly dns?: string;
 }
 
 export function setEndpointStaticIpJs(args: EndpointStaticIp): string {
@@ -416,17 +417,18 @@ export function setEndpointStaticIpJs(args: EndpointStaticIp): string {
     `(function(){` +
       `var d=${NET}.getDevice(${jsStr(args.device)});` +
       `if(!d)return "ERR:not_found";` +
-      `d.setDhcpFlag(false);` +
       `var port=d.getPort(${jsStr(args.port)});` +
       `if(!port)return "ERR:port_not_found";` +
+      `d.setDhcpFlag(false);port.setDhcpClientFlag(false);` +
       `port.setIpSubnetMask(${jsStr(args.ip)},${jsStr(args.mask)});` +
       gwLine +
+      (args.dns !== undefined ? `port.setDnsServerIp(${jsStr(args.dns)});` : "") +
       `return "OK";` +
     `})()`,
   );
 }
 
-export function setEndpointDhcpJs(deviceName: string): string {
+export function setEndpointDhcpJs(deviceName: string, portName?: string): string {
   return withLabel(
     `DHCP en ${deviceName}`,
     `(function(){` +
@@ -443,6 +445,7 @@ export function setEndpointDhcpJs(deviceName: string): string {
         `for(var i=0;i<n;i++){` +
           `var p=null;try{p=d.getPortAt(i);}catch(e){}` +
           `if(!p)continue;` +
+          `if(String(p.getName()).toLowerCase()==="bluetooth")continue;` +
           `if(!first)first=p;` +
           `var iswl=false;try{iswl=!!p.isWirelessPort();}catch(e){}` +
           `if(iswl&&!wireless)wireless=p;` +
@@ -451,14 +454,10 @@ export function setEndpointDhcpJs(deviceName: string): string {
         `}` +
       `}catch(e){}` +
       `port=linked||wireless||first;` +
-      `try{` +
-        `if(typeof configurePcIp==="function"){` +
-          `configurePcIp(${jsStr(deviceName)},true,"","","");` +
-          `method="configurePcIp";` +
-        `}` +
-      `}catch(e){}` +
-      `try{d.setDhcpFlag(true);}catch(e){}` +
-      `try{if(port&&typeof port.setDhcpClientFlag==="function"){port.setDhcpClientFlag(true);method=method+"+portDhcp("+(port.getName&&port.getName()||"?")+")";}}catch(e){}` +
+      (portName ? `port=d.getPort(${jsStr(portName)});if(!port)return "ERR:port_not_found";` : "") +
+      `if(!port)return "ERR:no_network_port";` +
+      `d.setDhcpFlag(true);` +
+      `port.setDhcpClientFlag(true);method=method+"+portDhcp("+port.getName()+")";` +
       `try{d.getCommandLine().enterCommand("ipconfig /renew");method=method+"+renew";}catch(e){}` +
       `return "OK:"+method;` +
     `})()`

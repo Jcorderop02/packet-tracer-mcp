@@ -38,6 +38,8 @@ export interface PingResult {
   readonly received: number;
   readonly lost: number;
   readonly successRate: number;
+  readonly complete?: boolean;
+  readonly status?: "success" | "loss" | "dns_error" | "unreachable" | "incomplete" | "timeout";
   readonly source: "pc" | "router";
   readonly raw: string;
 }
@@ -62,49 +64,20 @@ const PC_PING_HEADER_RE = /Pinging\s+([^\s]+)/i;
 const ROUTER_PING_HEADER_RE = /ICMP Echos? to\s+([^\s,]+)/i;
 
 export function parsePing(raw: string, target: string): PingResult {
-  if (!raw) {
-    return { target, sent: 0, received: 0, lost: 0, successRate: 0, source: "pc", raw };
-  }
-  const routerMatch = ROUTER_PING_RATE_RE.exec(raw);
-  if (routerMatch) {
-    const successRate = Number(routerMatch[1]);
-    const received = Number(routerMatch[2]);
-    const sent = Number(routerMatch[3]);
-    const headerTarget = ROUTER_PING_HEADER_RE.exec(raw)?.[1] ?? target;
-    return {
-      target: headerTarget,
-      sent,
-      received,
-      lost: sent - received,
-      successRate,
-      source: "router",
-      raw,
-    };
-  }
-  const pcMatch = PC_PING_STATS_RE.exec(raw);
-  if (pcMatch) {
-    const sent = Number(pcMatch[1]);
-    const received = Number(pcMatch[2]);
-    const lost = Number(pcMatch[3]);
-    const headerTarget = PC_PING_HEADER_RE.exec(raw)?.[1] ?? target;
-    return {
-      target: headerTarget,
-      sent,
-      received,
-      lost,
-      successRate: sent > 0 ? Math.round((received / sent) * 100) : 0,
-      source: "pc",
-      raw,
-    };
-  }
-  // Fallback: count "Reply from" / "!" markers — useful for partial output.
-  const replyCount = (raw.match(/Reply from/gi) ?? []).length;
-  const bangCount = (raw.match(/!/g) ?? []).length;
-  if (bangCount > 0 || replyCount > 0) {
-    const received = Math.max(replyCount, bangCount);
-    return { target, sent: received, received, lost: 0, successRate: 100, source: replyCount > 0 ? "pc" : "router", raw };
-  }
-  return { target, sent: 0, received: 0, lost: 0, successRate: 0, source: "pc", raw };
+  const router = ROUTER_PING_RATE_RE.exec(raw);
+  const pc = PC_PING_STATS_RE.exec(raw);
+  const unreachable = /Destination (?:host|net|network) unreachable/i.test(raw);
+  const dnsError = /could not find host|unknown host|unable to resolve|cannot resolve|unrecognized host/i.test(raw);
+  const echoes = (raw.match(/^\s*Reply from .*?(?:bytes[=<]\d+|time[=<]\d+)/gim) ?? []).length;
+  const markers = /ICMP Echos?/i.test(raw) ? (raw.match(/^\s*[!.U?]+\s*$/gm) ?? []).join("") : "";
+  const complete = !!(router || pc || dnsError);
+  const sent = router ? Number(router[3]) : pc ? Number(pc[1]) : echoes + (raw.match(/Request timed out/gi) ?? []).length;
+  let received = router ? Number(router[2]) : pc ? Number(pc[2]) : echoes || (markers.match(/!/g) ?? []).length;
+  if (unreachable && !router) received = echoes;
+  const status = dnsError ? "dns_error" : unreachable && !received ? "unreachable" : !complete ? "incomplete" : received === sent && sent > 0 ? "success" : "loss";
+  return { target: (router ? ROUTER_PING_HEADER_RE : PC_PING_HEADER_RE).exec(raw)?.[1] ?? target,
+    sent, received, lost: Math.max(0, sent - received), successRate: sent ? Math.round(received / sent * 100) : 0,
+    source: router || /ICMP Echos?/i.test(raw) ? "router" : "pc", complete, status, raw };
 }
 
 const PC_HOP_RE = /^\s*(\d+)\s+(.*)$/;
@@ -163,6 +136,7 @@ export function parseTraceroute(raw: string, target: string): TracerouteResult {
 }
 
 export function summarizePing(r: PingResult): string {
+  if (r.complete === false || r.status === "dns_error" || r.status === "timeout") return `ping ${r.target}: ${r.status}, ${r.received} confirmed echo replies`;
   return `ping ${r.target} (${r.source}): ${r.received}/${r.sent} replies, ${r.successRate}% success`;
 }
 

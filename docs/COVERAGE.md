@@ -29,6 +29,32 @@ prometer de más.
 
 ---
 
+## Integración propuesta: validación por versión
+
+Las filas históricas de este documento mantienen su alcance **PT 9.0.0.0810**.
+Las capacidades siguientes tienen pruebas unitarias y contratos/ejecuciones
+nativas en **PT 9.0.1**, pero la reproducción en 9.0.0.0810 está pendiente.
+Por eso no se promocionan a `verified-pt9` en esta matriz. La evidencia
+versionada y los límites se encuentran en [validación](integration/validacion.md)
+y [comportamiento](integration/mejoras.md).
+
+| Capacidad nueva o modificada | Estado de contribución | Evidencia |
+| --- | --- | --- |
+| Lectura de endpoints; puerto DHCP/DNS y aceptación de `OK:…` | `contract-verified` (9.0.1) | `tests/tools/endpoint-contract.test.ts`, smoke 9.0.1 |
+| WRT WAN con enums nombrados, LAN y DHCP enable | `contract-verified` (9.0.1) | `tests/tools/wrt-contract.test.ts`, smoke con reapertura |
+| DNS: A records, actualización/eliminación, lectura y resolución | `contract-verified` (9.0.1) | `tests/tools/dns-contract.test.ts`, `dns-resolution.test.ts`, resolución + ICMP 4/4 |
+| DHCP Server-PT: `serverPool`, rangos, pools/concesiones | `contract-verified` (9.0.1) | `tests/dhcp-validation.test.ts`, smoke con reapertura |
+| WPC300N; perfil abierto Default y asociación por MAC | `contract-verified` (9.0.1), alcance limitado | `tests/tools/wireless-contract.test.ts`, smoke; SSID arbitrario sigue sin soporte |
+| Checkpoints numerados, checksum y comparación al reabrir | `contract-verified` (9.0.1) | `tests/tools/checkpoint-pkt.test.ts`, smoke |
+| CLI: paginación, espera, offsets y errores por comando | `contract-verified` (9.0.1) | `tests/reliable-cli.test.ts`, smoke switch + `ipconfig /all` |
+| Bridge: correlación, timeout y Unicode | `contract-verified` (9.0.1) | `tests/bridge-correlation.test.ts`, echo nativo |
+| Layout: cascadas y asociaciones WiFi observadas | `contract-verified` (9.0.1) | `tests/hierarchy-layout.test.ts`, `tests/layout.test.ts`, smoke |
+
+El flujo Default de 9.0.1 no cambia las filas `dead-end` históricas de la receta
+`wifi_lan` ni demuestra asociación de perfiles arbitrarios en 9.0.0.0810.
+
+---
+
 ## Catálogo de dispositivos
 
 **54 / 54 modelos `verified-pt9`** — colocación, conteo de puertos,

@@ -16,19 +16,13 @@ import type {
   WirelessIntent,
 } from "./intents.js";
 
-/**
- * Mensaje de error compartido. Se lanza cuando el blueprint declara clientes
- * wireless. Documentado en docs/ROADMAP.md (fase 6) y docs/VERIFIED.md
- * (F6-03/04/05): la JS IPC pública de PT 9 expone setters de
- * `WirelessClientProcess`, pero no dispara la asociación radio. La GUI
- * asocia vía código nativo C++ no expuesto a `ipc.network()`. Verificado
- * con scripts/probe-wireless-associate.ts (siete estrategias, todas dead-end).
- */
+/** Keep generic recipe associations bounded to verified native behavior.
+ * The dedicated Default-profile tool handles the proven notebook workflow. */
 const WIRELESS_ASSOC_DEAD_END =
-  "PT 9 IPC does not trigger wireless association: the JS API exposes " +
-  "WirelessClientProcess setters but the radio link is established by " +
-  "native C++ code that is not reachable from ipc.network(). " +
-  "See docs/ROADMAP.md fase 6 and scripts/probe-wireless-associate.ts.";
+  "Arbitrary SSID/profile association is not verified through PT 9 IPC. " +
+  "Use pt_install_wireless_adapter, pt_read_wireless_client and " +
+  "pt_associate_default_wireless for the verified open Default-profile workflow; " +
+  "otherwise configure the native WiFi profile in the GUI and verify the AP MAC. ";
 
 export interface WirelessAction {
   readonly device: string;

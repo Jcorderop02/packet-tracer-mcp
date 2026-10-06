@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { readDhcpJs } from "../ipc/dhcp-read.js";
+import { validateDhcpPools, mergeDhcpPool, ipNumber } from "../ipc/dhcp-validation.js";
 import { configureServerDhcpJs } from "../ipc/dhcp-server.js";
 import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
 import type { ToolModule } from "./types.js";
@@ -66,6 +68,16 @@ export const registerConfigureServerDhcpTool: ToolModule = ({ bridge, server }) 
         return errorResult("nothing to do: pass at least one of enable/pools/removePools/exclusions.");
       }
 
+      if(raw.removePools?.includes("serverPool"))return errorResult("Packet Tracer recreates serverPool when reopening. Update its range instead of deleting it.");
+      try {
+        const reply=await bridge.sendAndWait(readDhcpJs(raw.device,raw.port));
+        if(!reply || /^(ERR|ERROR):/.test(reply))return errorResult(reply??"DHCP readback timeout");
+        const before=JSON.parse(reply) as {pools: import("../ipc/dhcp-server.js").DhcpPoolSpec[]};
+        const merged=before.pools.filter(p=>!raw.removePools?.includes(p.name)).map(p=>{const update=raw.pools?.find(x=>x.name===p.name);return update?mergeDhcpPool(p,update):p;});
+        for(const p of raw.pools??[])if(!merged.some(x=>x.name===p.name))merged.push(mergeDhcpPool(undefined,p));
+        validateDhcpPools(merged);
+        for(const range of raw.exclusions??[])if(ipNumber(range.start)>ipNumber(range.end))throw new Error("Invalid exclusion range: start exceeds end.");
+      }catch(e){return errorResult(String(e));}
       const js = configureServerDhcpJs({
         device: raw.device,
         port: raw.port,
@@ -76,8 +88,11 @@ export const registerConfigureServerDhcpTool: ToolModule = ({ bridge, server }) 
       });
       const result = await bridge.sendAndWait(js, { timeoutMs: 20_000 });
       if (result === null) return errorResult("timeout waiting for PT bridge response");
-      if (result.startsWith("ERR")) return errorResult(result);
-      return textResult(result);
+      if (result.startsWith("ERR") || /(?:_err|unreachable)\|/.test(result)) return errorResult(result);
+      const observed=await bridge.sendAndWait(readDhcpJs(raw.device,raw.port));
+      if(!observed || /^(ERR|ERROR):/.test(observed))return errorResult(`DHCP changes dispatched but readback failed: ${observed}`);
+      try{validateDhcpPools(JSON.parse(observed).pools);}catch(e){return errorResult(`DHCP readback invalid: ${e}`);}
+      return textResult(`${result}\nObserved DHCP state: ${observed}\nPersistence: keep serverPool configured; use pt_checkpoint_pkt with verifyReopen=true to check reload.`);
     },
   );
 };

@@ -32,7 +32,7 @@ const NET = "ipc.network()";
 /**
  * Cómo se construyen los enlaces en el snapshot:
  *
- * El JS sólo emite filas DEV / PORT (con `linked=1|0`). NO intenta resolver
+ * El JS emite DEV / PORT y LINKPAIR WiFi observado por MAC y enlace. NO intenta resolver
  * los endpoints del Link desde la API JS de PT 9 — está roto: el objeto
  * Link es opaco (`getDeviceA/B`, `getPortA/B`, `getEndpointA/B`,
  * `getOtherEnd`, `getId`, `toString` lanzan TypeError o devuelven null) y
@@ -72,6 +72,8 @@ export function snapshotCanvasJs(): string {
           `out.push("PORT|"+p.getName()+"|"+ip+"|"+mk+"|"+(lnk?"1":"0"));` +
         `}` +
       `}` +
+      `var radios={};for(var a=0;a<n;a++){try{var ap=net.getDeviceAt(a),wr=ap.getProcess("WirelessServerProcess"),rp=wr.getPort();radios[String(rp.getMacAddress()).toLowerCase()]={device:ap.getName(),port:rp.getName()};}catch(e){}}` +
+      `for(var c=0;c<n;c++){try{var client=net.getDeviceAt(c),wc=client.getProcess("WirelessClientProcess"),parent=radios[String(wc.getCurrentApMac()).toLowerCase()];if(!parent)continue;for(var j=0;j<client.getPortCount();j++){var cp=client.getPortAt(j);if(cp.isWirelessPort()&&cp.getLink())out.push("LINKPAIR|"+parent.device+"|"+parent.port+"|"+client.getName()+"|"+cp.getName());}}catch(e){}}` +
       `return out.join("\\n");` +
     `})()`,
   );
@@ -151,10 +153,8 @@ export function parseSnapshotDump(raw: string): CanvasSnapshot {
       continue;
     }
 
-    // LINK / LINKPAIR rows are no longer emitted by snapshotCanvasJs (PT 9
-    // Link API is opaque — see the comment on snapshotCanvasJs). We tolerate
-    // them silently for forward/backward compat in case a probe script or a
-    // future PT release re-introduces them.
+    // LINK supports legacy probes; LINKPAIR includes observed WiFi links.
+    // Wired links still come from the in-memory registry.
     if (tag === "LINK") {
       if (!current) throw new Error(`LINK row without enclosing DEV: ${line}`);
       const [, pname, otherDev, otherPort] = parts;

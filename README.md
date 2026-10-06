@@ -10,8 +10,8 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6?style=flat-square&logo=typescript&logoColor=white)
 
 ![CI](https://img.shields.io/github/actions/workflow/status/jcorderop02/packet-tracer-mcp/ci.yml?style=flat-square&label=CI&branch=main)
-![Tests](https://img.shields.io/badge/Tests-348%20passing-success?style=flat-square)
-![MCP tools](https://img.shields.io/badge/MCP%20tools-57-blueviolet?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-400%20passing-success?style=flat-square)
+![MCP tools](https://img.shields.io/badge/MCP%20tools-69-blueviolet?style=flat-square)
 ![Last commit](https://img.shields.io/github/last-commit/jcorderop02/packet-tracer-mcp?style=flat-square&label=Last%20commit)
 [![PRs welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square)](https://github.com/jcorderop02/packet-tracer-mcp/issues)
 
@@ -172,7 +172,7 @@ claude mcp add --transport http packet-tracer http://127.0.0.1:39001/mcp
 ```
 
 Verifica con `/mcp` dentro de Claude Code: debe aparecer `packet-tracer`
-con sus 57 tools.
+con sus 69 tools.
 </details>
 
 <details>
@@ -257,7 +257,7 @@ curl -sS -X POST http://127.0.0.1:39001/mcp \
 ```
 
 Debe devolver un `result` con `serverInfo.name = "packet-tracer-mcp"`. Un
-segundo POST con `"method":"tools/list"` devuelve las 57 tools con su
+segundo POST con `"method":"tools/list"` devuelve las 69 tools con su
 `inputSchema`.
 </details>
 
@@ -310,7 +310,7 @@ atreve a tocar.
 
 ## Capacidades
 
-`packet-tracer-mcp` expone **57 herramientas MCP** agrupadas por dominio.
+`packet-tracer-mcp` expone **69 herramientas MCP** agrupadas por dominio.
 
 ### Bridge y diagnóstico
 
@@ -354,6 +354,16 @@ vía API IPC nativa), `pt_configure_subinterface` (sub-interfaces 802.1Q
 para router-on-a-stick), `pt_apply_advanced_routing`, `pt_apply_ipv6`,
 `pt_apply_voip`, `pt_apply_wireless`.
 
+### Endpoints, WRT, DNS y WiFi
+
+`pt_read_endpoint`, `pt_configure_wireless_router`, `pt_read_wireless_router`,
+`pt_configure_dns`, `pt_read_dns`, `pt_verify_dns`, `pt_read_server_dhcp`,
+`pt_install_wireless_adapter`, `pt_read_wireless_client` y
+`pt_associate_default_wireless`. Configuran y vuelven a leer el canvas vivo.
+La asociación automática se limita al perfil abierto `Default` comprobado
+con WPC300N en PT 9.0.1; no reactiva la receta genérica `wifi_lan`.
+La validación requerida en PT 9.0.0.0810 sigue pendiente.
+
 ### Persistencia (snapshots)
 
 `pt_save_snapshot`, `pt_load_snapshot`, `pt_diff_snapshots`. Los
@@ -365,7 +375,9 @@ mismo en PT y tú decides.
 
 `pt_save_pkt`, `pt_open_pkt` (cuando el servidor y PT comparten
 filesystem), más `pt_save_pkt_to_bytes` y `pt_open_pkt_from_bytes` para
-mover el `.pkt` por la red. El formato comprimido `.pkz` no funciona:
+mover el `.pkt` por la red. `pt_checkpoint_pkt` crea copias numeradas con
+checksum y comprobación opcional al reabrir; `pt_latest_checkpoint` verifica
+la última copia confirmada. Véase [integración y límites](docs/integration/mejoras.md). El formato comprimido `.pkz` no funciona:
 la API JS expone los métodos pero los bytes que devuelve no son válidos
 en PT 9.0.0.0810.
 
@@ -434,7 +446,7 @@ Variables de entorno (todas opcionales):
   PT 9 real, en qué estado (`verified-pt9` / `contract-verified` /
   `partial` / `broken` / `dead-end`), referencias a smoke runs y
   limitaciones conocidas del simulador que afectan al usuario.
-- [`docs/TOOLS.md`](docs/TOOLS.md) — referencia de las 57 tools MCP,
+- [`docs/TOOLS.md`](docs/TOOLS.md) — referencia de las 69 tools MCP,
   con parámetros, comportamiento y notas.
 - [`docs/RECIPES.md`](docs/RECIPES.md) — catálogo de recipes (`chain`,
   `star`, `branch_office`, `campus_vlan`, `edge_nat`, `wifi_lan`,
@@ -567,7 +579,7 @@ Lista completa en [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
 Probado contra **Cisco Packet Tracer 9.0.0.0810**:
 
 - **54 / 54** modelos del catálogo etiquetados como `verified-pt9`.
-- **57 tools MCP** con sus tests unitarios.
+- **69 tools MCP** con sus tests unitarios.
 - **8 de 9 recetas** verificadas de principio a fin (`chain`, `star`,
   `branch_office`, `campus_vlan`, `edge_nat`, `dual_isp`, `voip_lab`,
   `ipv6_lab`). La novena, `wifi_lan`, se queda a medias por una
