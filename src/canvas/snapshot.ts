@@ -1,3 +1,4 @@
+import { wirelessRadioJs } from "../ipc/wireless-client.js";
 /**
  * Build a single PT script that walks the live workspace once and emits a
  * line-oriented dump describing every user-placed device, every port, and
@@ -60,8 +61,9 @@ export function snapshotCanvasJs(): string {
           `}catch(e){}}` +
         `}` +
       `}` +
-      `var radios={};for(var a=0;a<n;a++){try{var ap=net.getDeviceAt(a),wr=ap.getProcess("WirelessServerProcess"),rp=wr.getPort();radios[String(rp.getMacAddress()).toLowerCase()]={device:ap.getName(),port:rp.getName()};}catch(e){}}` +
-      `for(var c=0;c<n;c++){try{var client=net.getDeviceAt(c),wc=client.getProcess("WirelessClientProcess"),parent=radios[String(wc.getCurrentApMac()).toLowerCase()];if(!parent)continue;for(var j=0;j<client.getPortCount();j++){var cp=client.getPortAt(j);if(cp.isWirelessPort()&&cp.getLink())out.push("LINKPAIR|"+parent.device+"|"+parent.port+"|"+client.getName()+"|"+cp.getName());}}catch(e){}}` +
+      wirelessRadioJs +
+      `var radios={};for(var a=0;a<n;a++){try{var ap=net.getDeviceAt(a),rp=accessPointRadio(ap),key=rp?radioMac(rp.getMacAddress()):"";if(key)radios[key]={device:ap.getName(),port:rp.getName()};}catch(e){}}` +
+      `for(var c=0;c<n;c++){try{var client=net.getDeviceAt(c),wc=client.getProcess("WirelessClientProcess"),parent=radios[radioMac(wc.getCurrentApMac())];if(!parent)continue;for(var j=0;j<client.getPortCount();j++){var cp=client.getPortAt(j);if(cp.isWirelessPort()&&cp.getLink())out.push("LINKPAIR|"+parent.device+"|"+parent.port+"|"+client.getName()+"|"+cp.getName());}}catch(e){}}` +
       `return out.join("\\n");` +
     `})()`,
   );

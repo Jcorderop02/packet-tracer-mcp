@@ -2,8 +2,34 @@ import type { Bridge } from "../bridge/http-bridge.js";
 import { jsStr } from "./escape.js";
 import { nativeDevice } from "./integration-common.js";
 
+export const wirelessRadioJs = `
+  function radioMac(value){
+    var mac=String(value||"").replace(/[^0-9a-f]/gi,"").toLowerCase();
+    return mac.length===12&&mac!=="000000000000"?mac:"";
+  }
+  function accessPointRadio(device){
+    if(/^(?:3702i|LAP-PT)$/.test(String(device.getModel())))return device.getPort("Dot11Radio0");
+    var process=device.getProcess("WirelessServerProcess");
+    return process?process.getPort():null;
+  }
+`;
+
 export function readWirelessJs(device: string): string {
-  return nativeDevice(device, `var w=d.getProcess("WirelessClientProcess");if(!w)return "ERR:no_wireless_client";var p=null;for(var i=0;i<d.getPortCount();i++){var x=d.getPortAt(i);if(x.isWirelessPort()){p=x;break;}}if(!p)return "ERR:no_wireless_port";var mac=String(w.getCurrentApMac()),aps=[];var net=ipc.network();for(var j=0;j<net.getDeviceCount();j++){var a=net.getDeviceAt(j);try{var s=a.getProcess("WirelessServerProcess"),rp=s.getPort();if(String(rp.getMacAddress()).toLowerCase()===mac.toLowerCase())aps.push(a.getName());}catch(e){}}return JSON.stringify({ssid:String(w.getSsid()),apMac:mac,accessPoints:aps,associated:!!p.getLink()&&aps.length>0,port:p.getName(),ip:String(p.getIpAddress()),mask:String(p.getSubnetMask()),dhcp:p.isDhcpClientOn()});`);
+  return nativeDevice(device, `
+    ${wirelessRadioJs}
+    var w=d.getProcess("WirelessClientProcess");
+    if(!w)return "ERR:no_wireless_client";
+    var p=null;
+    for(var i=0;i<d.getPortCount();i++){var x=d.getPortAt(i);if(x.isWirelessPort()){p=x;break;}}
+    if(!p)return "ERR:no_wireless_port";
+    var mac=String(w.getCurrentApMac()),key=radioMac(mac),aps=[],net=ipc.network();
+    if(key)for(var j=0;j<net.getDeviceCount();j++){
+      var a=net.getDeviceAt(j);
+      try{var r=accessPointRadio(a);if(r&&radioMac(r.getMacAddress())===key)aps.push(a.getName());}catch(e){}
+    }
+    return JSON.stringify({ssid:String(w.getSsid()),apMac:mac,accessPoints:aps,associated:!!p.getLink()&&aps.length>0,
+      port:p.getName(),ip:String(p.getIpAddress()),mask:String(p.getSubnetMask()),dhcp:p.isDhcpClientOn()});
+  `);
 }
 export function installWirelessJs(device: string, replace: boolean): string {
   return nativeDevice(device,
