@@ -17,6 +17,42 @@ y el versionado sigue [SemVer](https://semver.org/spec/v2.0.0.html).
 
 Cambios en `main` que aún no han salido en una release etiquetada.
 
+### Added
+
+- Twelve tools for endpoint inspection, WRT, DNS, DHCP readback, limited
+  Wi-Fi association and numbered `.pkt` checkpoints.
+- A synthetic integration fixture for Packet Tracer 9.0.1.0858. See
+  [validation scope](docs/integration/validacion.md).
+
+### Fixed
+
+- Correlate bridge responses, discard late replies and preserve Unicode.
+- Count only valid echo replies; distinguish incomplete, DNS and unreachable results.
+- Use the same CLI runner for tools and recipes. Wait for completion,
+  advance pagination and stop on command errors.
+- Respect requested DHCP ports and accept `OK:…`; configure static endpoint DNS.
+- Preserve Server-PT `serverPool` and reject overlapping/invalid DHCP ranges.
+- Keep switch cascades and observed Wi-Fi associations at their actual layout depths.
+- Return Wi-Fi association without exposing the profile. Restore the previous
+  adapter on failed installation and handle the end of the DHCP lease list.
+- Include the MCP agent guide in both the npm package and standalone binary.
+  Report the package version in the MCP handshake.
+- Sign local macOS executable builds so they run on Apple Silicon.
+
+### Changed
+
+- **Breaking:** `pt_run_cli`/`pt_run_cli_bulk` now return per-command JSON
+  with errors/timeouts; bulk stops at the first failure. Include `enable`
+  explicitly or use `mode` on the single-command tool.
+- **Breaking:** `pt_set_pc` returns observed interfaces and rejects static
+  fields in DHCP mode; its omitted DHCP port is auto-selected.
+- **Breaking:** deleting `serverPool` is rejected because PT may recreate
+  an overlapping pool on reload. Update its range instead.
+- **Breaking:** partial/DNS-failed ping results now set `isError` instead
+  of presenting partial output as completed success. Cascaded layouts change
+  category-only row positions to preserve parent depth.
+
+
 ---
 
 ## [0.1.0] — 2026-05-01

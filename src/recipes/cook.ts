@@ -1,3 +1,4 @@
+import { runCliScript } from "../ipc/reliable-cli.js";
 /**
  * "Cook" a blueprint into the live canvas. The recipe walks the blueprint and
  * synthesises bridge operations in this order:
@@ -224,20 +225,8 @@ export async function cookBlueprint(bridge: Bridge, raw: Blueprint): Promise<Coo
     extraCli = [];
     for (const block of blueprint.extraCli) {
       try {
-        const reply = await bridge.sendAndWait(
-          (await import("../ipc/generator.js")).bulkCliJs(
-            block.device,
-            wrapInConfig(block.commands),
-          ),
-          { timeoutMs: 60_000 },
-        );
-        if (reply === null) {
-          extraCli.push({ device: block.device, ...(block.label ? { label: block.label } : {}), ok: false, error: "timed out" });
-        } else if (reply.startsWith("ERR:") || reply.startsWith("ERROR:")) {
-          extraCli.push({ device: block.device, ...(block.label ? { label: block.label } : {}), ok: false, error: reply });
-        } else {
-          extraCli.push({ device: block.device, ...(block.label ? { label: block.label } : {}), ok: true });
-        }
+        await runCliScript(bridge, block.device, wrapInConfig(block.commands));
+        extraCli.push({ device: block.device, ...(block.label ? { label: block.label } : {}), ok: true });
       } catch (err) {
         extraCli.push({ device: block.device, ...(block.label ? { label: block.label } : {}), ok: false, error: (err as Error).message });
       }

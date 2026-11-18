@@ -1,3 +1,4 @@
+import { runCliScript } from "../../ipc/reliable-cli.js";
 /**
  * EIGRP recipe. One `network <classful>` line per router subnet, scoped to a
  * single autonomous system number. PT's IOS image accepts wildcards too but
@@ -8,7 +9,6 @@ import type { Bridge } from "../../bridge/http-bridge.js";
 import { captureSnapshot } from "../../canvas/snapshot.js";
 import { ipToInt, parseCidr } from "../../canvas/subnetting.js";
 import { wrapInConfig } from "../../ipc/cli-prologue.js";
-import { bulkCliJs } from "../../ipc/generator.js";
 
 function maskBits(mask: string): number {
   const n = ipToInt(mask);
@@ -54,14 +54,7 @@ export async function applyEigrp(bridge: Bridge, asn = 1): Promise<EigrpReport> 
 }
 
 async function pushCli(bridge: Bridge, device: string, body: string): Promise<void> {
-  const reply = await bridge.sendAndWait(
-    bulkCliJs(device, wrapInConfig(body)),
-    { timeoutMs: 60_000 },
-  );
-  if (reply === null) throw new Error(`EIGRP CLI on ${device} timed out`);
-  if (reply.startsWith("ERROR:") || reply.startsWith("ERR:")) {
-    throw new Error(`EIGRP CLI on ${device} rejected: ${reply}`);
-  }
+  await runCliScript(bridge, device, wrapInConfig(body));
 }
 
 export function summarizeEigrp(r: EigrpReport): string {

@@ -262,16 +262,17 @@ describe("gridLayoutCanvas — algoritmo v2", () => {
     // este test partimos de coords (0,0), así que todo está en moves.
     const pos = (n: string) => placedAt(moves, n)!;
 
-    // ---- Filas ----
+    // Cascades now keep their real parent depth instead of flattening all
+    // switches/endpoints into category bands.
     expect(pos("R1").y).toBe(LAYOUT.Y_ROUTER);
     expect(pos("R2").y).toBe(LAYOUT.Y_ROUTER);
-    expect(pos("S_access").y).toBe(LAYOUT.Y_SWITCH);
-    expect(pos("S_main").y).toBe(LAYOUT.Y_SWITCH);
-    expect(pos("S2").y).toBe(LAYOUT.Y_SWITCH);
-    expect(pos("PC01").y).toBe(LAYOUT.Y_ENDPOINT);
-    expect(pos("Phone1001").y).toBe(LAYOUT.Y_ENDPOINT);
-    expect(pos("Phone4001").y).toBe(LAYOUT.Y_ENDPOINT);
-    expect(pos("Server_DHCP").y).toBe(LAYOUT.Y_SERVER);
+    expect(pos("S_main").y).toBeGreaterThan(pos("R1").y);
+    expect(pos("S2").y).toBe(pos("S_main").y);
+    expect(pos("S_access").y).toBeGreaterThan(pos("S_main").y);
+    expect(pos("PC01").y).toBeGreaterThan(pos("S_access").y);
+    expect(pos("Phone1001").y).toBeGreaterThan(pos("S_access").y);
+    expect(pos("Phone4001").y).toBeGreaterThan(pos("S2").y);
+    expect(pos("Server_DHCP").y).toBeGreaterThan(pos("S_main").y);
 
     // ---- Backbone: R1 a la izquierda, R2 a la derecha ----
     expect(pos("R1").x).toBeLessThan(pos("R2").x);
@@ -303,8 +304,8 @@ describe("gridLayoutCanvas — algoritmo v2", () => {
       .map(n => pos(n).x).reduce((a, b) => a + b, 0) / 3;
     expect(Math.abs(s2Avg - s2x)).toBeLessThan(LAYOUT.PC_X_SPACING);
 
-    // ---- Server DHCP en su fila, no encima de un PC ----
-    expect(pos("Server_DHCP").y).toBe(LAYOUT.Y_SERVER);
+    // Server DHCP remains below its parent without overlapping siblings.
+    expect(pos("Server_DHCP").y).toBeGreaterThan(pos("S_main").y);
     // No debe colisionar (mismo X exacto) con ningún endpoint de S_main.
     const sMainEndpoints = ["Phone1003", "PC04", "ATA1004"];
     for (const ep of sMainEndpoints) {
@@ -327,7 +328,7 @@ describe("gridLayoutCanvas — algoritmo v2", () => {
     // ---- AnalogPhone1004 ahora cuelga debajo del ATA, no en columna huérfana ----
     const ata = pos("ATA1004");
     const analog = pos("AnalogPhone1004");
-    expect(analog.y).toBe(LAYOUT.Y_ENDPOINT + 60);
+    expect(analog.y).toBeGreaterThan(ata.y);
     expect(Math.abs(analog.x - ata.x)).toBeLessThan(2);
 
     // ---- Endpoints de S_access no deben pisar a los de S_main ----

@@ -1,3 +1,4 @@
+import { runCliScript } from "../../ipc/reliable-cli.js";
 /**
  * Apply L2 switching intents to a live canvas. Each helper is independent so
  * it can be invoked from a dedicated tool, but `applySwitching` glues them
@@ -12,7 +13,6 @@
 
 import type { Bridge } from "../../bridge/http-bridge.js";
 import {
-  bulkCliJs,
   saveRunningConfigJs,
   setAccessPortNativeJs,
 } from "../../ipc/generator.js";
@@ -53,11 +53,7 @@ function groupBySwitch<T extends { switch: string }>(items: readonly T[]): Map<s
 }
 
 async function pushBulk(bridge: Bridge, device: string, body: string): Promise<void> {
-  const reply = await bridge.sendAndWait(bulkCliJs(device, wrapInConfig(body)), { timeoutMs: 60_000 });
-  if (reply === null) throw new Error(`switch CLI on ${device} timed out`);
-  if (reply.startsWith("ERR:") || reply.startsWith("ERROR:")) {
-    throw new Error(`switch CLI on ${device} rejected: ${reply}`);
-  }
+  await runCliScript(bridge, device, wrapInConfig(body));
 }
 
 async function pushNative(bridge: Bridge, device: string, label: string, expr: string): Promise<string> {

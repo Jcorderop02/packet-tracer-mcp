@@ -1,3 +1,4 @@
+import { runCliScript } from "../../ipc/reliable-cli.js";
 /**
  * Static routing recipe. Reads the live canvas, walks the router graph and
  * computes a first-hop next-hop for every (router, remote LAN) pair using BFS,
@@ -15,7 +16,6 @@ import { captureSnapshot } from "../../canvas/snapshot.js";
 import { ipToInt, parseCidr, prefixToMask } from "../../canvas/subnetting.js";
 import type { CanvasSnapshot, DeviceObservation, LinkObservation } from "../../canvas/types.js";
 import { wrapInConfig } from "../../ipc/cli-prologue.js";
-import { bulkCliJs } from "../../ipc/generator.js";
 
 export interface StaticRouteAction {
   readonly device: string;
@@ -190,14 +190,7 @@ export async function applyStaticRouting(bridge: Bridge): Promise<StaticRoutingR
 }
 
 async function pushCli(bridge: Bridge, device: string, body: string): Promise<void> {
-  const reply = await bridge.sendAndWait(
-    bulkCliJs(device, wrapInConfig(body)),
-    { timeoutMs: 60_000 },
-  );
-  if (reply === null) throw new Error(`static routing CLI on ${device} timed out`);
-  if (reply.startsWith("ERROR:") || reply.startsWith("ERR:")) {
-    throw new Error(`static routing CLI on ${device} rejected: ${reply}`);
-  }
+  await runCliScript(bridge, device, wrapInConfig(body));
 }
 
 export function summarizeStaticRouting(r: StaticRoutingReport): string {

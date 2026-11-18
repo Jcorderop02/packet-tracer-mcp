@@ -1,19 +1,9 @@
 import { z } from "zod";
 import { fetchDeviceModel } from "../ipc/device-model.js";
-import { bulkCliJs } from "../ipc/generator.js";
+import { runCliBlock } from "../ipc/reliable-cli.js";
 import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
-import { checkPtReply } from "./pt-errors.js";
 import type { ToolModule } from "./types.js";
 
-/**
- * The Script Engine accepts only single-line `enterCommand` payloads. To run
- * a configuration block (an OSPF stanza, a NAT pool, ACL list, ...) the
- * caller passes the whole block as one string and we split it client-side
- * before sending. The reply uses the structured BULK protocol from
- * `bulkCliJs`: the first line carries the number of commands run and a
- * truncation flag so the caller knows whether the slice is the full
- * transcript or just the tail.
- */
 const InputSchema = {
   device: z.string().min(1).describe("Router or switch name."),
   commands: z.string().min(1).describe(
@@ -26,7 +16,7 @@ const InputSchema = {
 export const registerRunCliBulkTool: ToolModule = ({ bridge, server }) => {
   server.tool(
     "pt_run_cli_bulk",
-    "Push a multi-line CLI block (e.g. an OSPF/EIGRP stanza or a sequence of `ip nat` rules) to a device. Returns a structured payload with the count of commands sent, a truncation flag, and the captured output.",
+    "Push a multi-line CLI block (e.g. an OSPF/EIGRP stanza or a sequence of `ip nat` rules) to a device. Returns each command’s output, errors, timeout and truncation status; stops at the first failure.",
     InputSchema,
     async ({ device, commands, tail_chars }) => {
       const blocked = requireConnectedBridge(bridge);
@@ -48,35 +38,15 @@ export const registerRunCliBulkTool: ToolModule = ({ bridge, server }) => {
         ? stripEncapsulationLines(commands)
         : { filtered: commands, droppedCount: 0, droppedSamples: [] as string[] };
 
-      const js = bulkCliJs(device, filtered, tail_chars);
-      const result = await bridge.sendAndWait(js, { timeoutMs: 60_000 });
-      const err = checkPtReply(result, { device });
-      if (err) return err;
-      if (!result) return textResult("(empty output)");
+      try {
+        const lines = filtered.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        const replies = await runCliBlock(bridge, device, lines);
+        const failed = replies.some(r => r.timedOut || r.errors.length);
+        const result = { requested: lines.length, executed: replies.length, droppedCount, droppedSamples,
+          stoppedOnError: failed, replies: replies.map(r => ({ ...r, truncated: r.output.length > tail_chars, output: r.output.slice(-tail_chars) })) };
+        return (failed ? errorResult : textResult)(JSON.stringify(result, null, 2));
+      } catch (e) { return errorResult(String(e)); }
 
-      // Expected: `BULK|<count>|<truncated>\n<rest>`
-      const newlineIdx = result.indexOf("\n");
-      if (!result.startsWith("BULK|") || newlineIdx === -1) {
-        return errorResult(`Unexpected reply shape from PT bulk CLI: ${result.slice(0, 80)}`);
-      }
-      const header = result.slice(0, newlineIdx);
-      const output = result.slice(newlineIdx + 1);
-      const parts = header.split("|");
-      const count = Number(parts[1] ?? "0");
-      const truncated = parts[2] === "1";
-
-      const filterNote =
-        droppedCount > 0
-          ? `Note: stripped ${droppedCount} 'switchport trunk encapsulation' line(s) — ` +
-            `${className ?? "this switch"} only supports 802.1Q and rejects the command. ` +
-            `Filtered: ${droppedSamples.join(" | ")}\n`
-          : "";
-
-      const banner =
-        `Sent ${count} command(s)${truncated ? " (output truncated to tail)" : ""}.\n` +
-        filterNote +
-        `--- output ---\n`;
-      return textResult(banner + (output.length > 0 ? output : "(empty output)"));
     },
   );
 };

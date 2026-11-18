@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { enterCommandJs } from "../ipc/generator.js";
-import { requireConnectedBridge, textResult } from "./helpers.js";
-import { checkPtReply } from "./pt-errors.js";
+import { runCliBlock } from "../ipc/reliable-cli.js";
+import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
 import type { ToolModule } from "./types.js";
 
 const InputSchema = {
@@ -19,11 +18,13 @@ export const registerRunCliTool: ToolModule = ({ bridge, server }) => {
       const blocked = requireConnectedBridge(bridge);
       if (blocked) return blocked;
 
-      const js = enterCommandJs(device, command, mode ?? "");
-      const result = await bridge.sendAndWait(js, { timeoutMs: 15_000 });
-      const err = checkPtReply(result, { device });
-      if (err) return err;
-      return textResult(result && result.length > 0 ? result : "(empty output)");
+      try {
+        const prefix = mode === "global" ? ["enable", "configure terminal"] : mode === "enable" ? ["enable"] : [];
+        const replies = await runCliBlock(bridge, device, [...prefix, command]);
+        const failed = replies.some(r => r.timedOut || r.errors.length);
+        return (failed ? errorResult : textResult)(JSON.stringify(replies, null, 2));
+      } catch (e) { return errorResult(String(e)); }
+
     },
   );
 };

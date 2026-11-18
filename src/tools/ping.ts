@@ -24,9 +24,9 @@ export const registerPingTool: ToolModule = ({ bridge, server }) => {
         const summary = summarizePing(result);
         const detail =
           `${summary}\n` +
-          `source=${result.source}, sent=${result.sent}, received=${result.received}, lost=${result.lost}, successRate=${result.successRate}\n` +
+          `status=${result.status}, complete=${result.complete}, source=${result.source}, sent=${result.sent}, received=${result.received}, lost=${result.lost}, successRate=${result.successRate}\n` +
           `--- raw ---\n${raw || "(no output captured)"}`;
-        return textResult(detail);
+        return (result.complete && result.status !== "dns_error" ? textResult : errorResult)(detail);
       } catch (e) {
         return errorResult(`pt_ping failed on ${device} → ${target}: ${(e as Error).message}`);
       }

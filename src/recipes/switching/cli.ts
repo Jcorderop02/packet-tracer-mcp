@@ -1,7 +1,7 @@
 /**
  * Pure CLI builders for the L2 switching intents. Every function in here
  * returns a multi-line `\n`-separated string ready to be fed into
- * `bulkCliJs(device, …)`. They never touch the bridge — that lets the unit
+ * el ejecutor CLI. They never touch the bridge — that lets the unit
  * tests assert exact CLI output without spinning up Packet Tracer.
  */
 

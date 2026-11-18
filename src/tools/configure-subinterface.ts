@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { wrapInConfig } from "../ipc/cli-prologue.js";
-import { bulkCliJs } from "../ipc/generator.js";
+import { runCliScript } from "../ipc/reliable-cli.js";
 import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
-import { checkPtReply } from "./pt-errors.js";
 import type { ToolModule } from "./types.js";
 
 /**
@@ -103,16 +102,12 @@ export const registerConfigureSubinterfaceTool: ToolModule = ({ bridge, server }
       }
 
       const body = subinterfaceCli({ parent: raw.parent, subinterfaces: raw.subinterfaces });
-      const reply = await bridge.sendAndWait(
-        bulkCliJs(raw.device, wrapInConfig(body)),
-        { timeoutMs: 60_000 },
-      );
-      const err = checkPtReply(reply, { device: raw.device });
-      if (err) return err;
-      if (!reply) return errorResult(`subinterface CLI on ${raw.device} timed out`);
-
-      const newlineIdx = reply.indexOf("\n");
-      const output = newlineIdx > -1 ? reply.slice(newlineIdx + 1) : reply;
+      let output: string;
+      try {
+        output = await runCliScript(bridge, raw.device, wrapInConfig(body));
+      } catch (error) {
+        return errorResult(String(error));
+      }
 
       const summary =
         `Configured ${raw.subinterfaces.length} subinterface(s) on ${raw.device} ` +

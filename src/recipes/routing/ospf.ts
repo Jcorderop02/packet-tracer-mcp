@@ -1,3 +1,4 @@
+import { runCliScript } from "../../ipc/reliable-cli.js";
 /**
  * OSPF recipe. Walks the live canvas, extracts each router's interface
  * subnets (LAN + transit) and emits one `network <net> <wildcard> area 0`
@@ -9,7 +10,6 @@ import { captureSnapshot } from "../../canvas/snapshot.js";
 import { ipToInt, parseCidr, prefixToWildcard } from "../../canvas/subnetting.js";
 import type { CanvasSnapshot } from "../../canvas/types.js";
 import { wrapInConfig } from "../../ipc/cli-prologue.js";
-import { bulkCliJs } from "../../ipc/generator.js";
 
 function maskBits(mask: string): number {
   const n = ipToInt(mask);
@@ -57,14 +57,7 @@ export async function applyOspf(bridge: Bridge, pid = 1, area = 0): Promise<Ospf
 }
 
 async function pushCli(bridge: Bridge, device: string, body: string): Promise<void> {
-  const reply = await bridge.sendAndWait(
-    bulkCliJs(device, wrapInConfig(body)),
-    { timeoutMs: 60_000 },
-  );
-  if (reply === null) throw new Error(`OSPF CLI on ${device} timed out`);
-  if (reply.startsWith("ERROR:") || reply.startsWith("ERR:")) {
-    throw new Error(`OSPF CLI on ${device} rejected: ${reply}`);
-  }
+  await runCliScript(bridge, device, wrapInConfig(body));
 }
 
 export function summarizeOspf(r: OspfReport): string {

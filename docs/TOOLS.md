@@ -1,6 +1,6 @@
 # Referencia de tools MCP
 
-Este documento es la referencia auto-generada de las 57 tools MCP que expone `packet-tracer-mcp`. El orden coincide con el registro real en `src/tools/index.ts` (la lista `ALL_TOOLS`), agrupado por las secciones que marcan los comentarios de ese fichero.
+Esta referencia cubre las 57 herramientas originales. Las 12 añadidas se documentan en la [guía de integración](integration/mejoras.md).
 
 ## Índice
 
@@ -226,10 +226,11 @@ Este documento es la referencia auto-generada de las 57 tools MCP que expone `pa
 **Parámetros:**
 - `device` (string, requerido) — nombre del endpoint.
 - `mode` (enum, requerido) — `static` o `dhcp`.
-- `port` (string, opcional) — puerto a configurar (por defecto `FastEthernet0`).
+- `port` (string, opcional) — puerto a configurar. En DHCP, se selecciona automáticamente si se omite. En estático, el valor por defecto es `FastEthernet0`.
 - `ip` (string, opcional) — IPv4, obligatorio si `mode='static'`.
 - `mask` (string, opcional) — máscara, obligatoria si `mode='static'`.
 - `gateway` (string, opcional) — gateway por defecto, solo modo estático.
+- `dns` (string, opcional) — servidor DNS, solo modo estático.
 
 **Notas:** Solo aplica a endpoints (PC-PT, Laptop-PT, Server-PT); routers se configuran por CLI. En modo estático valida que `ip` y `mask` estén presentes.
 
@@ -309,7 +310,7 @@ Este documento es la referencia auto-generada de las 57 tools MCP que expone `pa
 - `device` (string, requerido) — router corriendo BGP.
 - `vrf` (string, opcional) — nombre de VRF; si no se pone, usa la tabla global.
 
-**Notas:** PT 9 no expone `BgpProcess` por JS, así que esta es la única forma de inspeccionar el estado real de BGP. Detecta `% BGP not active` y errores de parser, con fallback a `runShowRunning` cuando IOS rechaza `terminal length 0`.
+**Notas:** PT 9 no expone `BgpProcess` por JS, así que esta es la única forma de inspeccionar el estado real de BGP. Espera a que termine el comando y avanza la paginación si aparece.
 
 ### `pt_read_project_metadata`
 
@@ -374,7 +375,7 @@ Este documento es la referencia auto-generada de las 57 tools MCP que expone `pa
 - `port` (string, opcional) — puerto donde corre el servicio (por defecto `FastEthernet0`).
 - `enable` (boolean, opcional) — encender/apagar el servicio DHCP.
 - `pools` (array, opcional) — pools a crear o actualizar; idempotente por nombre.
-- `removePools` (array, opcional) — pools a eliminar primero.
+- `removePools` (array, opcional) — pools a eliminar primero. `serverPool` se puede actualizar, pero su eliminación se rechaza.
 - `exclusions` (array, opcional) — rangos excluidos a nivel de puerto.
 
 **Notas:** Server-PT NO expone setters para TFTP/option-150, dominio ni boot file (limitaciones documentadas en la propia descripción). Si necesitas option-150 (típico para teléfonos IP), usa `pt_apply_services` con `dhcpPools[].tftpServer` y deja que el router haga de DHCP.
@@ -475,9 +476,9 @@ Este documento es la referencia auto-generada de las 57 tools MCP que expone `pa
 **Parámetros:**
 - `device` (string, requerido) — nombre del router o switch.
 - `command` (string, requerido) — comando CLI (p. ej. `show ip interface brief`).
-- `mode` (string, opcional) — pista de modo (`""`, `enable`, `global`); cadena vacía auto-detecta.
+- `mode` (string, opcional) — pista de modo (`""`, `enable`, `global`); cadena vacía usa el modo actual.
 
-**Notas:** Para una única línea. Para bloques completos (configuraciones), usa `pt_run_cli_bulk`.
+**Notas:** Devuelve resultados JSON por comando, incluidos los cambios de modo solicitados, con salida, timeout y errores.
 
 ### `pt_run_cli_bulk`
 
@@ -488,7 +489,7 @@ Este documento es la referencia auto-generada de las 57 tools MCP que expone `pa
 - `commands` (string, requerido) — bloque multilínea; las líneas vacías se ignoran.
 - `tail_chars` (int, opcional) — tope de caracteres a devolver del transcript (100–20000, por defecto 2000).
 
-**Notas:** Aplica un filtro consciente del modelo: para 2950/2960/3650/IE-3400/IE-9320 elimina automáticamente las líneas `switchport trunk encapsulation` (que esos parsers rechazan). 3560 sí las acepta y no se filtran.
+**Notas:** Devuelve resultados JSON por comando y detiene el bloque al primer fallo. Incluye `enable` si hace falta. Aplica un filtro por modelo: para 2950/2960/3650/IE-3400/IE-9320 elimina automáticamente las líneas `switchport trunk encapsulation` (que esos parsers rechazan). 3560 sí las acepta y no se filtran.
 
 ## Simulation / ops
 
@@ -624,7 +625,8 @@ Este documento es la referencia auto-generada de las 57 tools MCP que expone `pa
 > Escape hatch: ship arbitrary JS to PT's Script Engine. Useful when no specialised tool covers what you need yet.
 
 **Parámetros:**
-- `code` (string, requerido) — expresión JS a evaluar dentro del Script Engine de PT (envuelta implícitamente, así que se puede usar `return ...`).
+- `code` (string, requerido) — expresión JS a evaluar dentro del Script Engine de PT (por ejemplo, `ipc.network().getDeviceCount()`). Para ejecutar varias
+  sentencias, usa una expresión como `(function(){ return 1; })()`.
 - `wait` (boolean, opcional) — si `true` (por defecto), espera el resultado; si `false`, fire-and-forget.
 - `timeout_ms` (int, opcional) — timeout en ms (máx. 60000).
 

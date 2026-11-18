@@ -85,7 +85,7 @@ describe("subinterfaceCli", () => {
 describe("wrapInConfig", () => {
   test("wraps body with the canonical PT-9-safe prologue", () => {
     expect(wrapInConfig("interface Gi0/0\n no shutdown")).toBe(
-      "enable\nterminal length 0\nconfigure terminal\nno ip domain-lookup\ninterface Gi0/0\n no shutdown\nend",
+      "enable\nconfigure terminal\nno ip domain-lookup\ninterface Gi0/0\n no shutdown\nend",
     );
   });
 });

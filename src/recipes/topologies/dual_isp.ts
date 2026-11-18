@@ -144,9 +144,10 @@ export function dualIsp(opts: DualIspOptions): Blueprint {
     {
       device: "EDGE1",
       asn: EDGE1_ASN,
+      // The simulated IOS on these routers rejects neighbor descriptions.
       neighbors: [
-        { ip: ispToEdge1Ip, remoteAs: ISP_ASN, description: "ISP" },
-        { ip: edge2ToEdge1Ip, remoteAs: EDGE2_ASN, description: "EDGE2" },
+        { ip: ispToEdge1Ip, remoteAs: ISP_ASN },
+        { ip: edge2ToEdge1Ip, remoteAs: EDGE2_ASN },
       ],
       networks: [lanCidr],
     },
@@ -154,8 +155,8 @@ export function dualIsp(opts: DualIspOptions): Blueprint {
       device: "EDGE2",
       asn: EDGE2_ASN,
       neighbors: [
-        { ip: ispToEdge2Ip, remoteAs: ISP_ASN, description: "ISP" },
-        { ip: edge1ToEdge2Ip, remoteAs: EDGE1_ASN, description: "EDGE1" },
+        { ip: ispToEdge2Ip, remoteAs: ISP_ASN },
+        { ip: edge1ToEdge2Ip, remoteAs: EDGE1_ASN },
       ],
       networks: [lanCidr],
     },
@@ -163,8 +164,8 @@ export function dualIsp(opts: DualIspOptions): Blueprint {
       device: "ISP",
       asn: ISP_ASN,
       neighbors: [
-        { ip: edge1ToIspIp, remoteAs: EDGE1_ASN, description: "EDGE1" },
-        { ip: edge2ToIspIp, remoteAs: EDGE2_ASN, description: "EDGE2" },
+        { ip: edge1ToIspIp, remoteAs: EDGE1_ASN },
+        { ip: edge2ToIspIp, remoteAs: EDGE2_ASN },
       ],
     },
   ];

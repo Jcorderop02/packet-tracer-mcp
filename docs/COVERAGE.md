@@ -1,14 +1,9 @@
 # Cobertura verificada contra Packet Tracer 9
 
-Este documento resume **qué partes de `packet-tracer-mcp` están comprobadas
-contra una instancia real de Cisco Packet Tracer 9.0.0.0810** y cuáles
-no. Cada fila enlaza al smoke run que la respalda.
-
-> Los enlaces a `smoke-runs/` apuntan a transcripts internos generados
-> por `bun run scripts/smoke.ts`. No se publican (son ruidosos y de
-> tamaño desproporcionado para un README), pero las rutas se conservan
-> aquí como referencia trazable: si reproduces la suite localmente,
-> tendrás los mismos identificadores.
+Comprobaciones del MCP en Cisco Packet Tracer. La integración actual se
+probó en **9.0.1.0858** en macOS. Las tablas históricas corresponden a
+**9.0.0.0810** y a la versión base del MCP. Las referencias de
+`smoke-runs/` identifican transcripciones del repositorio interno.
 
 ---
 
@@ -23,9 +18,46 @@ no. Cada fila enlaza al smoke run que la respalda.
 | ❌ `broken` | Probado y falla; se documenta el motivo y el workaround. |
 | ⛔ `dead-end` | Imposible con la API JS pública de PT 9. Requiere cambios en Cisco. |
 
-Una línea está completa cuando aparece `verified-pt9` con un enlace al
-smoke. `contract-verified` es un estado intermedio honesto que evita
+Una línea histórica con `verified-pt9` identifica la prueba que la respalda. `contract-verified` es un estado intermedio honesto que evita
 prometer de más.
+
+---
+
+## Integración en 9.0.1.0858
+
+Las filas históricas de este documento mantienen su alcance **PT 9.0.0.0810**.
+La tabla separa las comprobaciones automáticas de los resultados comunicados
+por el autor del PR para su laboratorio con **PT 9.0.1**. La reproducción
+en 9.0.0.0810 está pendiente.
+La evidencia por versión y los límites se encuentran en [validación](integration/validacion.md)
+y [comportamiento](integration/mejoras.md).
+
+| Capacidad nueva o modificada | Estado de contribución | Evidencia |
+| --- | --- | --- |
+| Lectura de endpoints; puerto DHCP/DNS y aceptación de `OK:…` | `contract-verified` (9.0.1) | `tests/tools/endpoint-contract.test.ts`, smoke 9.0.1 |
+| WRT WAN con enums nombrados, LAN y DHCP enable | `contract-verified` (9.0.1) | `tests/tools/wrt-contract.test.ts`, smoke con reapertura |
+| DNS: registros A, borrado, lectura y resolución | `contract-verified` (9.0.1) | `tests/tools/dns-contract.test.ts`, `dns-resolution.test.ts`, borrado nativo y resolución + ICMP 4/4 |
+| DHCP Server-PT: `serverPool`, rangos, pools/concesiones | `contract-verified` (9.0.1) | `tests/dhcp-validation.test.ts`, smoke con reapertura |
+| WPC300N; perfil abierto Default y asociación por MAC | `contract-verified` (9.0.1), alcance limitado | `tests/tools/wireless-contract.test.ts`, smoke; SSID arbitrario sigue sin soporte |
+| Checkpoints numerados, checksum y comparación de ajustes seleccionados al reabrir | `contract-verified` (9.0.1) | `tests/tools/checkpoint-pkt.test.ts`, smoke |
+| CLI: espera y errores por comando. Paginación cubierta por prueba automática | `contract-verified` (9.0.1) | `tests/reliable-cli.test.ts`, smoke switch + `ipconfig /all` |
+| Bridge: correlación, timeout y Unicode | `contract-verified` (9.0.1) | `tests/bridge-correlation.test.ts`, echo nativo |
+| Layout: cascadas y asociaciones WiFi observadas | `contract-verified` (9.0.1) | `tests/hierarchy-layout.test.ts`, `tests/layout.test.ts`, smoke |
+
+En una repetición independiente con **9.0.1.0858**, el laboratorio del PR
+completó la reapertura y resolvió `test.example` con 4/4 respuestas ICMP
+tras varios intentos de convergencia. La suite histórica ejecutada sobre la
+versión base obtuvo 12 de 31 casos aprobados en esa misma build.
+
+En la rama de revisión, los reintentos confirmaron las recetas de campus,
+NAT, IPv6, VoIP y dos ISP, además del troncal y la VLAN nativa en el
+Catalyst 3650. En dos ISP se comprobó configuración BGP/HSRP, concesión
+DHCP y ping a la puerta de enlace virtual. El intercambio efectivo de rutas
+BGP queda fuera de ese caso. También se confirmó la inserción de HWIC-2T
+con lectura del puerto serie.
+
+El flujo Default de 9.0.1 no cambia las filas `dead-end` históricas de la receta
+`wifi_lan` ni demuestra asociación de perfiles arbitrarios en 9.0.0.0810.
 
 ---
 
@@ -103,7 +135,7 @@ soportados en el catálogo.
 ## L2 — Switching
 
 Receta `campus_vlan` (router-on-a-stick) `verified-pt9` end-to-end con
-ping inter-VLAN en [smoke RCP-CAMPUS-VLAN](smoke-runs/2026-04-28_210016.md).
+ping inter-VLAN en smoke RCP-CAMPUS-VLAN (2026-04-28_210016.md).
 
 | Capacidad | Modelo verificado | Estado | Notas |
 |-----------|-------------------|--------|-------|
@@ -126,7 +158,7 @@ API nativa de `SwitchPort` (alternativa al CLI): `setAccessPort`,
 
 Receta `edge_nat` (DHCP + NAT overload + ACL) `verified-pt9` end-to-end
 con DHCP, ping ISP y NAT translation en
-[smoke RCP-EDGE-NAT](smoke-runs/2026-04-28_205159.md).
+smoke RCP-EDGE-NAT (2026-04-28_205159.md).
 
 | Capacidad | Modelo verificado | Estado | Notas |
 |-----------|-------------------|--------|-------|
@@ -169,7 +201,7 @@ Receta `dual_isp` `verified-pt9` (BGP + HSRP combinados).
 ## IPv6
 
 Receta `ipv6_lab` `verified-pt9` en
-[smoke RCP-IPV6-LAB](smoke-runs/2026-04-29_072834.md).
+smoke RCP-IPV6-LAB (2026-04-29_072834.md).
 
 | Capacidad | Estado | Notas |
 |-----------|--------|-------|
@@ -226,7 +258,7 @@ automáticamente.
 ## Simulación y operaciones
 
 Smoke `RCP-SIM-OPS` `verified-pt9` en
-[smoke 2026-04-29_080146](smoke-runs/2026-04-29_080146.md). Pieza
+smoke `2026-04-29_080146.md`. Pieza
 verificada con `scripts/probe-fase8b.ts` antes del smoke.
 
 | Capacidad | Estado | Notas |
@@ -254,7 +286,7 @@ con `port.getLink() + isPortUp() + isProtocolUp()`).
 Tools añadidas en 2026-04-29 que cubren huecos del API JS de PT 9 sin
 romper la filosofía canvas-first (todas leen estado vivo, no plan).
 Las 8 verificadas pasan smoke directo contra PT 9.0.0.0810 en
-[`smoke-runs/2026-04-29_125057.md`](smoke-runs/2026-04-29_125057.md).
+smoke-runs/2026-04-29_125057.md.
 
 | Capacidad | Tool | Estado | Evidencia |
 |-----------|------|--------|-----------|
@@ -274,9 +306,9 @@ Las 8 verificadas pasan smoke directo contra PT 9.0.0.0810 en
 
 | Capacidad | Estado | Evidencia |
 |-----------|--------|-----------|
-| `pt_save_pkt(path)` (filesystem compartido) | ✅ `verified-pt9` | [smoke RCP-PKT-IO](smoke-runs/2026-04-29_084209.md) PASS 8.9 s |
+| `pt_save_pkt(path)` (filesystem compartido) | ✅ `verified-pt9` | smoke RCP-PKT-IO (2026-04-29_084209.md) PASS 8.9 s |
 | `pt_open_pkt(path, replace=true)` | ✅ `verified-pt9` | mismo smoke; `FileOpenReturnValue=0` es la única señal autoritativa de validez |
-| `pt_save_pkt_to_bytes(max_bytes)` (transporte in-memory) | ✅ `verified-pt9` | [smoke RCP-PKT-BYTES](smoke-runs/2026-04-29_084243.md) PASS 20.9 s |
+| `pt_save_pkt_to_bytes(max_bytes)` (transporte in-memory) | ✅ `verified-pt9` | smoke RCP-PKT-BYTES (2026-04-29_084243.md) PASS 20.9 s |
 | `pt_open_pkt_from_bytes(b64, replace=true, max_bytes)` | ✅ `verified-pt9` | mismo smoke; SHA-1 cross-check + cleanup de temps |
 | Formato `.pkz` (comprimido) | ⛔ `dead-end` | `fileSaveAsPkzAsync` despacha pero el archivo nunca llega a disco. PT 9 no produce bytes válidos. |
 
@@ -399,7 +431,7 @@ Para validación manual sin smoke runner:
   `pt_read_project_metadata`) cubren inspección read-only y
   primitivas atómicas que antes estaban implícitas en `pt_mend_canvas`
   o `pt_send_raw`. 8 de las 9 son `verified-pt9` directo
-  ([smoke 2026-04-29_125057](smoke-runs/2026-04-29_125057.md));
+  (smoke `2026-04-29_125057.md`);
   `pt_show_bgp_routes` queda en `partial` por falta de `BgpProcess` JS,
   verificado transitivamente vía `dual_isp`.
 - **9 recetas de topología**: 5 `verified-pt9` end-to-end, 3

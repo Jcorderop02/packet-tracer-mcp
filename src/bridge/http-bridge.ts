@@ -1,3 +1,5 @@
+import { withLabel } from "../ipc/label.js";
+
 type BunServer = ReturnType<typeof Bun.serve>;
 
 /**
@@ -55,6 +57,7 @@ export class Bridge {
   private readonly queue: string[] = [];
   private readonly resultWaiters: Array<(value: string | null) => void> = [];
   private bunServer: BunServer | null = null;
+  private readonly pending = new Map<string, (value: string | null) => void>();
   private lastSeenAt: number | null = null;
 
   constructor(public readonly port: number = 54321) {}
@@ -63,6 +66,7 @@ export class Bridge {
     if (this.bunServer) return;
     this.bunServer = Bun.serve({
       port: this.port,
+      hostname: "127.0.0.1",
       fetch: (req) => this.handle(req),
     });
   }
@@ -71,6 +75,9 @@ export class Bridge {
     this.bunServer?.stop(true);
     this.bunServer = null;
     this.flushWaiters(null);
+    for (const settle of this.pending.values()) settle(null);
+    this.queue.length = 0;
+    this.lastSeenAt = null;
   }
 
   status(): BridgeStatus {
@@ -80,7 +87,7 @@ export class Bridge {
       connected,
       port: this.port,
       queueLength: this.queue.length,
-      hasPendingResult: this.resultWaiters.length > 0,
+      hasPendingResult: this.resultWaiters.length > 0 || this.pending.size > 0,
       lastSeenAt: since,
     };
   }
@@ -105,9 +112,20 @@ export class Bridge {
    * back as `"ERROR:<message>"`.
    */
   async sendAndWait(jsExpression: string, opts: SendAndWaitOptions = {}): Promise<string | null> {
-    const wrapped = wrapForResult(jsExpression, this.port, opts.label);
-    this.enqueue(wrapped);
-    return this.waitForResult(opts.timeoutMs ?? 10_000);
+    const id = crypto.randomUUID();
+    return new Promise(resolve => {
+      const timer = setTimeout(() => {
+        this.queue.splice(0, this.queue.length, ...this.queue.filter(command => !command.includes(id)));
+        settle(null);
+      }, opts.timeoutMs ?? 10_000);
+      const settle = (value: string | null) => {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        resolve(value);
+      };
+      this.pending.set(id, settle);
+      this.enqueue(wrapForResult(jsExpression, this.port, opts.label, id));
+    });
   }
 
   private waitForResult(timeoutMs: number): Promise<string | null> {
@@ -128,6 +146,13 @@ export class Bridge {
   }
 
   private deliverResult(text: string): void {
+    try {
+      const envelope = JSON.parse(text);
+      if (envelope && typeof envelope.__mcpRequestId === "string") {
+        this.pending.get(envelope.__mcpRequestId)?.(String(envelope.value));
+        return; // Late correlated replies must never satisfy another request.
+      }
+    } catch { /* Legacy extension/bootstrap result. */ }
     const next = this.resultWaiters.shift();
     if (next) next(text);
   }
@@ -142,7 +167,7 @@ export class Bridge {
   private async handle(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const method = req.method.toUpperCase();
-    this.lastSeenAt = Date.now();
+    if (url.pathname === "/next" || url.pathname === "/ping") this.lastSeenAt = Date.now();
 
     if (method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -202,11 +227,19 @@ function hexFromBridgeToText(hex: string): string {
  */
 const LABEL_RE = /^\s*\/\*\s*([^*][^]*?)\s*\*\/\s*/;
 
-function wrapForResult(jsExpression: string, port: number, explicitLabel?: string): string {
+function wrapForResult(jsExpression: string, port: number, explicitLabel?: string, id?: string): string {
   const match = jsExpression.match(LABEL_RE);
   const embeddedLabel = match?.[1] ? match[1].replace(/\s+/g, " ").trim() : null;
   const code = match ? jsExpression.slice(match[0].length) : jsExpression;
   const label = explicitLabel?.trim() || embeddedLabel || null;
-  const prefix = label ? `/* ${label} */ ` : "";
-  return `${prefix}__mcpEval(${JSON.stringify(code)},${port});`;
+  // Numeric UTF-16 source avoids quote/newline corruption in PT webview eval.
+  const units = Array.from({ length: code.length }, (_, i) => code.charCodeAt(i));
+  const chunks: string[] = [];
+  for (let i = 0; i < units.length; i += 16_384) {
+    chunks.push(`String.fromCharCode.apply(null,[${units.slice(i, i + 16_384).join(",")}])`);
+  }
+  const safeEval = `eval(${chunks.join("+") || '""'})`;
+  const correlated = `(function(){var value;try{value=String(${safeEval});}catch(e){value="ERROR:"+String(e);}return JSON.stringify({__mcpRequestId:${JSON.stringify(id)},value:value}).replace(/[^\\x20-\\x7e]/g,function(c){return "\\\\u"+("0000"+c.charCodeAt(0).toString(16)).slice(-4);});})()`;
+  const command = `__mcpEval(${JSON.stringify(correlated)},${port});`;
+  return label ? withLabel(label, command) : command;
 }

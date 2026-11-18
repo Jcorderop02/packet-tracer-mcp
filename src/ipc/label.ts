@@ -19,7 +19,7 @@
  * último espacio antes del límite.
  */
 export function withLabel(label: string, js: string): string {
-  return `/* ${label} */ ${js}`;
+  return `/* ${label.replace(/\*\//g, "* /")} */ ${js}`;
 }
 
 /**

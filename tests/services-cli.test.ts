@@ -248,7 +248,7 @@ describe("ntpCli / syslogCli", () => {
 describe("wrapInConfig (services)", () => {
   test("wraps body identically to switching", () => {
     expect(wrapInConfig("ntp server 10.0.0.1")).toBe(
-      "enable\nterminal length 0\nconfigure terminal\nno ip domain-lookup\nntp server 10.0.0.1\nend",
+      "enable\nconfigure terminal\nno ip domain-lookup\nntp server 10.0.0.1\nend",
     );
   });
 });

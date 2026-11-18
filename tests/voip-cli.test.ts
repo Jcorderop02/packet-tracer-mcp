@@ -109,7 +109,7 @@ describe("voip cme/ephone CLI", () => {
 
   test("wrapInConfig wraps body with the canonical PT-9-safe prologue", () => {
     expect(wrapInConfig("foo")).toBe(
-      "enable\nterminal length 0\nconfigure terminal\nno ip domain-lookup\nfoo\nend",
+      "enable\nconfigure terminal\nno ip domain-lookup\nfoo\nend",
     );
   });
 });

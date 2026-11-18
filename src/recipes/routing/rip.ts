@@ -1,3 +1,4 @@
+import { runCliScript } from "../../ipc/reliable-cli.js";
 /**
  * RIPv2 recipe. `router rip / version 2 / no auto-summary / network <c>` per
  * router subnet (classful form). Defaults to v2 because v1 is rarely useful
@@ -8,7 +9,6 @@ import type { Bridge } from "../../bridge/http-bridge.js";
 import { captureSnapshot } from "../../canvas/snapshot.js";
 import { parseCidr, ipToInt } from "../../canvas/subnetting.js";
 import { wrapInConfig } from "../../ipc/cli-prologue.js";
-import { bulkCliJs } from "../../ipc/generator.js";
 
 function maskBits(mask: string): number {
   const n = ipToInt(mask);
@@ -53,14 +53,7 @@ export async function applyRip(bridge: Bridge, version: 1 | 2 = 2): Promise<RipR
 }
 
 async function pushCli(bridge: Bridge, device: string, body: string): Promise<void> {
-  const reply = await bridge.sendAndWait(
-    bulkCliJs(device, wrapInConfig(body)),
-    { timeoutMs: 60_000 },
-  );
-  if (reply === null) throw new Error(`RIP CLI on ${device} timed out`);
-  if (reply.startsWith("ERROR:") || reply.startsWith("ERR:")) {
-    throw new Error(`RIP CLI on ${device} rejected: ${reply}`);
-  }
+  await runCliScript(bridge, device, wrapInConfig(body));
 }
 
 export function summarizeRip(r: RipReport): string {

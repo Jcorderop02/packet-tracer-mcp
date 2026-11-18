@@ -57,6 +57,25 @@ import { registerConfigureServerDhcpTool } from "./configure-server-dhcp.js";
 import { registerConfigureSubinterfaceTool } from "./configure-subinterface.js";
 import { registerPlanReviewTool } from "./plan-review.js";
 
+
+
+
+
+
+
+import { registerReadEndpointTool } from "./read-endpoint.js";
+import { registerReadWirelessRouterTool } from "./read-wireless-router.js";
+import { registerConfigureWirelessRouterTool } from "./configure-wireless-router.js";
+import { registerReadDnsTool } from "./read-dns.js";
+import { registerConfigureDnsTool } from "./configure-dns.js";
+import { registerVerifyDnsTool } from "./verify-dns.js";
+import { registerInstallWirelessAdapterTool } from "./install-wireless-adapter.js";
+import { registerReadWirelessClientTool } from "./read-wireless-client.js";
+import { registerAssociateDefaultWirelessTool } from "./associate-default-wireless.js";
+import { registerCheckpointPktTool } from "./checkpoint-pkt.js";
+import { registerLatestCheckpointTool } from "./latest-checkpoint.js";
+import { registerReadServerDhcpTool } from "./read-server-dhcp.js";
+
 export type { ToolContext, ToolModule } from "./types.js";
 
 export const ALL_TOOLS: readonly ToolModule[] = [
@@ -64,6 +83,18 @@ export const ALL_TOOLS: readonly ToolModule[] = [
   registerPlanReviewTool,
   // Health + catalog
   registerBridgeStatusTool,
+  registerReadEndpointTool,
+  registerReadWirelessRouterTool,
+  registerConfigureWirelessRouterTool,
+  registerReadDnsTool,
+  registerConfigureDnsTool,
+  registerVerifyDnsTool,
+  registerInstallWirelessAdapterTool,
+  registerReadWirelessClientTool,
+  registerAssociateDefaultWirelessTool,
+  registerCheckpointPktTool,
+  registerLatestCheckpointTool,
+  registerReadServerDhcpTool,
   registerListDevicesTool,
   registerListModulesTool,
   registerListRecipesTool,

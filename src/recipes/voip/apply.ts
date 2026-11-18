@@ -1,3 +1,4 @@
+import { runCliScript } from "../../ipc/reliable-cli.js";
 /**
  * Apply VoIP intents to the live canvas. Groups all router-side CLI per device
  * (telephony-service + every ephone-dn + every ephone) into a single bulk push,
@@ -6,7 +7,6 @@
  */
 
 import type { Bridge } from "../../bridge/http-bridge.js";
-import { bulkCliJs } from "../../ipc/generator.js";
 import {
   cmeSummary,
   ephoneDnSummary,
@@ -37,12 +37,8 @@ export interface VoipReport {
   readonly actions: readonly VoipAction[];
 }
 
-async function pushBulk(bridge: Bridge, label: string, device: string, body: string): Promise<void> {
-  const reply = await bridge.sendAndWait(bulkCliJs(device, wrapInConfig(body)), { timeoutMs: 60_000 });
-  if (reply === null) throw new Error(`${label} on ${device} timed out`);
-  if (reply.startsWith("ERR:") || reply.startsWith("ERROR:")) {
-    throw new Error(`${label} on ${device} rejected: ${reply}`);
-  }
+async function pushBulk(bridge: Bridge, device: string, body: string): Promise<void> {
+  await runCliScript(bridge, device, wrapInConfig(body));
 }
 
 function groupBy<T, K>(items: readonly T[], key: (t: T) => K): Map<K, T[]> {
@@ -90,7 +86,7 @@ export async function applyVoip(bridge: Bridge, v: VoipIntent): Promise<VoipRepo
     const phones: EphoneIntent[] = [...phoneList.filter(p => p.device === device)].sort((a, b) => a.ephoneNumber - b.ephoneNumber);
     const body = routerVoipBody(cmes, dns, phones);
     if (!body) continue;
-    await pushBulk(bridge, "VoIP CME", device, body);
+    await pushBulk(bridge, device, body);
     for (const c of cmes) actions.push({ device, kind: "cme", detail: cmeSummary(c) });
     for (const d of dns) actions.push({ device, kind: "ephone-dn", detail: ephoneDnSummary(d) });
     for (const p of phones) actions.push({ device, kind: "ephone", detail: ephoneSummary(p) });
@@ -98,7 +94,7 @@ export async function applyVoip(bridge: Bridge, v: VoipIntent): Promise<VoipRepo
 
   for (const [sw, list] of groupBy(vlanList, x => x.switch)) {
     const body = switchVoipBody(list);
-    await pushBulk(bridge, "voice VLAN", sw, body);
+    await pushBulk(bridge, sw, body);
     for (const v2 of list) actions.push({ device: sw, kind: "voice-vlan", detail: voiceVlanSummary(v2) });
   }
 
