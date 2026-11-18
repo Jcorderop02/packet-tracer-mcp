@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ToolModule } from "./types.js";
-import { ipv4, nativeCall, makeGuard } from "./integration-common.js";
-import { installWirelessJs, readWirelessJs, associateDefaultJs } from "../ipc/wireless-client.js";
+import { nativeCall, makeGuard } from "./integration-common.js";
+import { readWirelessJs, associateDefaultJs } from "../ipc/wireless-client.js";
 const device = z.string().min(1);
 
 export const InputSchema = {device,ap:device,allowRestart:z.literal(true)};

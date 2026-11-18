@@ -1,3 +1,4 @@
+import { runCliScript } from "../ipc/reliable-cli.js";
 /**
  * Addressing recipe. Reads the live canvas, determines which router uplinks
  * face other routers (transit /30s) and which face LAN switches/endpoints
@@ -24,7 +25,6 @@ import {
 import type { CanvasSnapshot, DeviceObservation, LinkObservation } from "../canvas/types.js";
 import { wrapInConfig } from "../ipc/cli-prologue.js";
 import {
-  bulkCliJs,
   setEndpointStaticIpJs,
   setEndpointDhcpJs,
 } from "../ipc/generator.js";
@@ -261,13 +261,7 @@ export async function applyAddressing(
 }
 
 async function sendBulk(bridge: Bridge, device: string, cli: string): Promise<void> {
-  const reply = await bridge.sendAndWait(bulkCliJs(device, wrapInConfig(cli)), {
-    timeoutMs: 60_000,
-  });
-  if (reply === null) throw new Error(`addressing CLI on ${device} timed out`);
-  if (reply.startsWith("ERROR:") || reply.startsWith("ERR:")) {
-    throw new Error(`addressing CLI on ${device} rejected: ${reply}`);
-  }
+  await runCliScript(bridge, device, wrapInConfig(cli));
 }
 
 async function sendRaw(bridge: Bridge, js: string): Promise<void> {

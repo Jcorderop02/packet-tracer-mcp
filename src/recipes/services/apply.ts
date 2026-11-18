@@ -1,3 +1,4 @@
+import { runCliScript } from "../../ipc/reliable-cli.js";
 /**
  * Apply L3 service intents (ACLs, NAT, DHCP server/relay, NTP, Syslog) to
  * the live canvas. Each helper:
@@ -8,7 +9,6 @@
  */
 
 import type { Bridge } from "../../bridge/http-bridge.js";
-import { bulkCliJs } from "../../ipc/generator.js";
 import {
   aclCli,
   dhcpPoolCli,
@@ -40,11 +40,7 @@ export interface ServicesReport {
 }
 
 async function pushBulk(bridge: Bridge, device: string, body: string): Promise<void> {
-  const reply = await bridge.sendAndWait(bulkCliJs(device, wrapInConfig(body)), { timeoutMs: 60_000 });
-  if (reply === null) throw new Error(`services CLI on ${device} timed out`);
-  if (reply.startsWith("ERR:") || reply.startsWith("ERROR:")) {
-    throw new Error(`services CLI on ${device} rejected: ${reply}`);
-  }
+  await runCliScript(bridge, device, wrapInConfig(body));
 }
 
 function groupByDevice<T extends { device: string }>(items: readonly T[]): Map<string, T[]> {

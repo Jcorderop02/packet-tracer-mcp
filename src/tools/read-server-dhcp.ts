@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ToolModule } from "./types.js";
-import { ipv4, nativeCall, makeGuard } from "./integration-common.js";
+import { nativeCall, makeGuard } from "./integration-common.js";
 import { readDhcpJs } from "../ipc/dhcp-read.js";
 const device = z.string().min(1);
 

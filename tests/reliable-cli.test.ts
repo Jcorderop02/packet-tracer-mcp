@@ -28,3 +28,13 @@ test("timeout preserves partial output and stops later writes",async()=>{
   const result=await runCliBlock(bridge,"SW",["ping","configure terminal"],250);
   expect(result[0]?.timedOut).toBe(true);expect(result[0]?.output).toContain("timed out");expect(sent).toEqual(["ping"]);
 });
+
+test("a link-state notification after the prompt does not stall IOS commands", async () => {
+  const { bridge, sent } = mockCli({
+    "no shutdown": ["\nSwitch#\n%LINK-5-CHANGED: Interface FastEthernet0/1, changed state to up\n"],
+    "ephone-dn 1": ["\nSwitch#%LINK-3-UPDOWN: Interface ephone_dsp DN 1.1, changed state to up\n"],
+  });
+  const replies = await runCliBlock(bridge, "SW", ["no shutdown", "ephone-dn 1", "show clock"], 2000);
+  expect(replies.every(reply => !reply.timedOut)).toBe(true);
+  expect(sent).toEqual(["no shutdown", "ephone-dn 1", "show clock"]);
+});

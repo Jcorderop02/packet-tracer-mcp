@@ -56,6 +56,8 @@
   },
   "files": [
     "src",
+    "AGENTS.md",
+    "scripts/build.ts",
     "extension/dist/*.pts",
     "server.json",
     "README.md",
@@ -68,7 +70,7 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun run --hot src/index.ts",
-    "build": "bun build src/index.ts --compile --outfile dist/packet-tracer-mcp",
+    "build": "bun run scripts/build.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "test:watch": "bun test --watch"

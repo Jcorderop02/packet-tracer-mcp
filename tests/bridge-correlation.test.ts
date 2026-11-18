@@ -13,3 +13,12 @@ describe("correlated transport",()=>{
   test("status requests alone do not pretend PT is connected",async()=>{const b=new Bridge();await wire(b).handle(new Request("http://localhost/status"));expect(b.status().connected).toBe(false);});
   test("stop settles all pending requests",async()=>{const b=new Bridge();const p=b.sendAndWait('"pending"');b.stop();expect(await p).toBeNull();expect(b.status().queueLength).toBe(0);});
 });
+
+test("source spanning multiple wire chunks preserves Unicode", async () => {
+  const bridge = new Bridge();
+  const text = "á🚀".repeat(12_000);
+  const result = bridge.sendAndWait(JSON.stringify(text));
+  await deliver(bridge, evaluateWire(await dequeue(bridge)));
+  expect(await result).toBe(text);
+  bridge.stop();
+});

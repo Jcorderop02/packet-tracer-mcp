@@ -1,3 +1,4 @@
+import { runCliScript } from "../../ipc/reliable-cli.js";
 /**
  * Apply IPv6 intents to the live canvas. The applier groups all
  * router-side IPv6 intents per device into a single bulk push so the
@@ -11,7 +12,7 @@
  */
 
 import type { Bridge } from "../../bridge/http-bridge.js";
-import { bulkCliJs, enterCommandJs } from "../../ipc/generator.js";
+import { enterCommandJs } from "../../ipc/generator.js";
 import {
   ipv6InterfaceSummary,
   ipv6OspfSummary,
@@ -66,12 +67,8 @@ function validateEndpoint(e: Ipv6EndpointIntent): void {
   }
 }
 
-async function pushBulk(bridge: Bridge, label: string, device: string, body: string): Promise<void> {
-  const reply = await bridge.sendAndWait(bulkCliJs(device, wrapInConfig(body)), { timeoutMs: 60_000 });
-  if (reply === null) throw new Error(`${label} on ${device} timed out`);
-  if (reply.startsWith("ERR:") || reply.startsWith("ERROR:")) {
-    throw new Error(`${label} on ${device} rejected: ${reply}`);
-  }
+async function pushBulk(bridge: Bridge, device: string, body: string): Promise<void> {
+  await runCliScript(bridge, device, wrapInConfig(body));
 }
 
 async function pushPcCli(bridge: Bridge, device: string, command: string): Promise<void> {
@@ -122,7 +119,7 @@ export async function applyIpv6(bridge: Bridge, v: Ipv6Intent): Promise<Ipv6Repo
       staticRoutes: routes,
     });
     if (!body) continue;
-    await pushBulk(bridge, "IPv6", device, body);
+    await pushBulk(bridge, device, body);
     if (enableUnicast) {
       actions.push({ device, kind: "router-cli", detail: "ipv6 unicast-routing" });
     }

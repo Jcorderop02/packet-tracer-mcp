@@ -8,36 +8,10 @@
  * don't will still see them when the LLM calls `resources/read` after
  * being pointed at them by SERVER_INSTRUCTIONS.
  *
- * Static text — read from disk on first request, cached in-memory. We could
- * embed the strings at build time but that would mean a rebuild every time
- * AGENTS.md changes; runtime read keeps the docs editable.
  */
 
-import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
-// Resolve once at module load: ../../ from src/resources/index.ts is the
-// project root, where AGENTS.md sits. Works for both `bun src/index.ts`
-// (file URL points into the source tree) and a published npm package
-// (because we ship AGENTS.md alongside src/ — see package.json `files`).
-const HERE = dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = resolve(HERE, "..", "..");
-const AGENTS_PATH = resolve(PROJECT_ROOT, "AGENTS.md");
-
-const cache = new Map<string, string>();
-
-async function readCached(path: string, fallback: string): Promise<string> {
-  if (cache.has(path)) return cache.get(path)!;
-  try {
-    const text = await readFile(path, "utf-8");
-    cache.set(path, text);
-    return text;
-  } catch {
-    return fallback;
-  }
-}
+import agentGuide from "../../AGENTS.md" with { type: "text" };
 
 const WIRING_CONVENTIONS = `# Cabling conventions for packet-tracer-mcp
 
@@ -255,7 +229,7 @@ export function registerResources(server: McpServer): void {
       contents: [{
         uri: uri.href,
         mimeType: "text/markdown",
-        text: await readCached(AGENTS_PATH, "AGENTS.md not bundled with this distribution."),
+        text: agentGuide,
       }],
     }),
   );

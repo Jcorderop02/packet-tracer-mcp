@@ -4,15 +4,6 @@ import { runCliBlock } from "../ipc/reliable-cli.js";
 import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
 import type { ToolModule } from "./types.js";
 
-/**
- * The Script Engine accepts only single-line `enterCommand` payloads. To run
- * a configuration block (an OSPF stanza, a NAT pool, ACL list, ...) the
- * caller passes the whole block as one string and we split it client-side
- * before sending. The reply uses the structured BULK protocol from
- * `bulkCliJs`: the first line carries the number of commands run and a
- * truncation flag so the caller knows whether the slice is the full
- * transcript or just the tail.
- */
 const InputSchema = {
   device: z.string().min(1).describe("Router or switch name."),
   commands: z.string().min(1).describe(
@@ -25,7 +16,7 @@ const InputSchema = {
 export const registerRunCliBulkTool: ToolModule = ({ bridge, server }) => {
   server.tool(
     "pt_run_cli_bulk",
-    "Push a multi-line CLI block (e.g. an OSPF/EIGRP stanza or a sequence of `ip nat` rules) to a device. Returns a structured payload with the count of commands sent, a truncation flag, and the captured output.",
+    "Push a multi-line CLI block (e.g. an OSPF/EIGRP stanza or a sequence of `ip nat` rules) to a device. Returns each command’s output, errors, timeout and truncation status; stops at the first failure.",
     InputSchema,
     async ({ device, commands, tail_chars }) => {
       const blocked = requireConnectedBridge(bridge);

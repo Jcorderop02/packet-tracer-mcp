@@ -1,6 +1,6 @@
 # Bootstrap
 
-Para que `packet-tracer-mcp` pueda tocar Packet Tracer 9.0, primero
+Para que `packet-tracer-mcp` pueda tocar Packet Tracer 9, primero
 tiene que haber un pequeño bucle de polling corriendo *dentro* de PT.
 Ese bucle hace dos cosas: pedir la siguiente expresión JS al bridge
 (`http://127.0.0.1:54321/next`) y pasársela al Script Engine vía
@@ -14,7 +14,7 @@ pegar código a mano en ningún sitio.
 
 1. Descarga `mcp-bridge.pts` desde este repositorio
    (`extension/dist/mcp-bridge.pts`).
-2. En Packet Tracer 9.0:
+2. En Packet Tracer 9:
    `Extensions > Scripting > Configure PT Script Modules > Add` y
    selecciona el `.pts` descargado.
 3. Marca la extensión como activa. PT la copia al directorio de

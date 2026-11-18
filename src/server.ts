@@ -1,3 +1,4 @@
+import pkg from "../package.json";
 import { createServer, type IncomingMessage, type ServerResponse, type Server as HttpServer } from "node:http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -26,7 +27,7 @@ export interface RunningServer {
 }
 
 const SERVER_INSTRUCTIONS = [
-  "packet-tracer-mcp drives Cisco Packet Tracer 9.0 via its native IPC tree.",
+  "packet-tracer-mcp drives Cisco Packet Tracer 9 via its native IPC tree.",
   "All write operations require the bootstrap snippet (see pt_bridge_status)",
   "to be executing inside a PT webview.",
   "",
@@ -103,7 +104,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   const buildSession = async (): Promise<SessionRecord> => {
     const mcpServer = new McpServer({
       name: "packet-tracer-mcp",
-      version: "0.1.0",
+      version: pkg.version,
     }, {
       instructions: SERVER_INSTRUCTIONS,
     });
@@ -290,7 +291,7 @@ export async function startStdioServer(opts: StdioServerOptions): Promise<Runnin
   const tools = opts.tools ?? ALL_TOOLS;
   const mcpServer = new McpServer({
     name: "packet-tracer-mcp",
-    version: "0.1.0",
+    version: pkg.version,
   }, {
     instructions: SERVER_INSTRUCTIONS,
   });

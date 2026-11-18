@@ -12,7 +12,7 @@ La rama `mejora-integracion` implementa el plan aprobado en [plan-de-mejora.md](
 | `pt_verify_dns` | Resolución desde un cliente, separada del resultado ICMP. |
 | `pt_read_server_dhcp` | Pools y consulta opcional de concesiones. |
 | `pt_install_wireless_adapter` | WPC300N en notebook, con `replace=true` para reemplazar un módulo ocupado. |
-| `pt_read_wireless_client` | Asociación real, AP/MAC, perfil e interfaz. |
+| `pt_read_wireless_client` | Asociación real, AP/MAC e interfaz. |
 | `pt_associate_default_wireless` | Asociación comprobada al AP indicado, abierto y con SSID `Default`; requiere `allowRestart=true`. |
 | `pt_checkpoint_pkt` | `.pkt` numerado, tamaño y SHA-256; comparación opcional al reabrir. |
 | `pt_latest_checkpoint` | Verificar y recuperar la ruta del último guardado confirmado. |
@@ -27,9 +27,9 @@ Ejemplo de configuración WAN:
 {"device":"WRT","wanMode":"static","wanIp":"10.10.10.1","wanMask":"255.255.255.0","lanIp":"192.168.50.1","lanMask":"255.255.255.0","dhcpEnabled":false}
 ```
 
-`pt_set_pc` permite `dns` en modo estático y respeta `port` también en DHCP. Si no se proporciona puerto DHCP, selecciona uno conectado o inalámbrico y excluye Bluetooth. La respuesta `OK:…` significa que se aplicó la operación; la lectura distingue ese estado de una concesión DHCP todavía pendiente. Para gateway/DNS del cliente usa `pt_run_cli` con `ipconfig /all`: esos getters no existen en todos los objetos nativos. Los campos de gateway/DNS del perfil WiFi pueden estar desactualizados.
+`pt_set_pc` permite `dns` en modo estático y respeta `port` también en DHCP. Si no se proporciona puerto DHCP, selecciona uno conectado o inalámbrico y excluye Bluetooth. La respuesta `OK:…` significa que se aplicó la operación; la lectura distingue ese estado de una concesión DHCP todavía pendiente. Para gateway/DNS del cliente usa `pt_run_cli` con `ipconfig /all`: esos getters no existen en todos los objetos nativos. La lectura Wi-Fi omite el perfil y sus credenciales.
 
-La CLI devuelve resultados por comando. `pt_run_cli_bulk` conserva el filtrado de encapsulación por modelo, ejecuta en secuencia y se detiene al primer error o timeout. Incluye `enable` explícitamente en el bloque; en `pt_run_cli` se puede usar `mode="enable"` o `mode="global"`. La paginación `--More--` avanza con espacios. `no` sólo se envía cuando está visible la pregunta del asistente inicial. Un timeout del bridge deja el resultado de una escritura incierto: consultar el estado antes de repetirla. Las recetas antiguas que usan el generador síncrono `bulkCliJs` siguen siendo síncronas; para comandos largos o paginados usa las herramientas CLI.
+La CLI devuelve resultados por comando. `pt_run_cli_bulk` conserva el filtrado de encapsulación por modelo, ejecuta en secuencia y se detiene al primer error o timeout. Incluye `enable` explícitamente en el bloque; en `pt_run_cli` se puede usar `mode="enable"` o `mode="global"`. La paginación `--More--` avanza con espacios. `no` sólo se envía cuando está visible la pregunta del asistente inicial. Un timeout del bridge deja el resultado de una escritura incierto: consultar el estado antes de repetirla. Las recetas y las herramientas de CLI usan el mismo ejecutor.
 
 Ping distingue `success`, `loss`, `unreachable`, `dns_error`, `incomplete` y `timeout`. Una respuesta “Destination host unreachable” no cuenta como eco exitoso. Un resultado parcial no se presenta como conectividad comprobada. La resolución DNS puede funcionar aunque ICMP falle.
 

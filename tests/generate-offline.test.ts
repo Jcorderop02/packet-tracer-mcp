@@ -12,7 +12,7 @@ describe("generateConfigs (offline pipeline)", () => {
     expect(r1.config).toContain("router ospf 1");
     expect(r1.config).toContain("network 192.168.0.0 0.0.0.255 area 0");
     expect(r1.config).toContain("network 10.0.0.0 0.0.0.3 area 0");
-    expect(r1.config.startsWith("enable\nterminal length 0\nconfigure terminal\nno ip domain-lookup\n")).toBe(true);
+    expect(r1.config.startsWith("enable\nconfigure terminal\nno ip domain-lookup\n")).toBe(true);
     expect(r1.config.endsWith("\nend")).toBe(true);
 
     expect(out.allocations.transit.size).toBe(2); // R1-R2, R2-R3

@@ -138,7 +138,7 @@ idempotente de operaciones sobre el canvas más comandos CLI. Patrón:
    (testeable sin PT).
 3. `apply.ts` — appliers async que agrupan por dispositivo, envuelven
    en `enable\nconfigure terminal\n…\nend` con `wrapInConfig`, despachan
-   vía `bulkCliJs(device, body)` y devuelven un `Report` con `actions`
+   vía `runCliScript(bridge, device, script)` y devuelven un `Report` con `actions`
    y `skipped`.
 
 `cook.ts` es el orquestador: aplica blueprints en el orden
@@ -264,7 +264,7 @@ en PT 9.0.0.0810 (verificado por probe, ver `docs/COVERAGE.md`).
   no expone forma de que el cliente *asocie* contra un AP. El contador
   de redes vistas se queda en cero, así que la receta `wifi_lan` se
   marca como `partial`. El flujo dedicado abierto Default con WPC300N
-  se probó en PT 9.0.1, pero no hay validación de ese flujo en 9.0.0.0810.
+  se probó en PT 9.0.1.0858, pero no hay validación de ese flujo en 9.0.0.0810.
 - **Creación programática de clusters lógicos.**
   `LogicalWorkspace.addCluster()` opera sobre la selección actual del
   UI y no hay IPC para programarla desde fuera. `pt_manage_clusters`

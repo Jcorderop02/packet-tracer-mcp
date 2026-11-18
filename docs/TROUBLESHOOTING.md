@@ -137,13 +137,11 @@ ha terminado cuando el bridge lee la salida.
 
 **Fix:**
 
-- El servidor inyecta `terminal length 0` automáticamente al entrar al
-  modo privilegiado. Si lo ves cortado, probablemente la sesión es
-  recién creada y aún no se ha aplicado — repite la llamada una vez
-  más.
-- Para `show` muy largos, considera `pt_show_running` (paginación
-  manejada) o `pt_run_cli_bulk` con `commands: ["show running-config"]`
-  en lugar de uno suelto.
+- `pt_run_cli`, `pt_run_cli_bulk` y `pt_show_running` esperan la salida
+  y avanzan el paginador. Comprueba `timedOut` y `errors` antes de dar
+  por aplicado el bloque.
+- Tras un timeout, consulta el estado de la configuración antes de repetir
+  un comando que escribe.
 
 ---
 
@@ -216,14 +214,8 @@ PACKETTRACER_MCP_HOST=0.0.0.0 bun run src/index.ts
 
 ## Errores típicos en el wizard de Cisco
 
-PT lanza un wizard la primera vez que entras a `enable` en algunos
-modelos. El servidor lo neutraliza con `enable` + `terminal length 0` +
-`configure terminal` + `no ip domain-lookup`. Si ves el wizard saliendo
-en CLI:
-
-- Llama a `pt_run_cli` con `command: "no"` para abortarlo.
-- Vuelve a intentar el comando original.
-
-Esto se trataba en versiones antiguas de PT, en 9.0.0.0810 está
-estable, pero si ves comportamiento raro reporta el modelo exacto del
-device.
+Algunos modelos muestran el asistente de configuración al arrancar.
+El ejecutor envía `no` cuando detecta la pregunta `[yes/no]`. Si el
+equipo se queda en el asistente, reporta el modelo y la versión exacta
+de Packet Tracer. En un prompt normal, un `no` suelto puede iniciar una
+búsqueda DNS y bloquear temporalmente la CLI.

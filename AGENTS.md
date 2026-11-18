@@ -198,9 +198,8 @@ Cuando una operación legítima no la cubre ninguna tool específica:
   falta una tool dedicada.
 - `pt_run_cli` para una sola línea CLI; `pt_run_cli_bulk` para varias.
   Indica `mode="enable"` o incluye `enable` explícitamente.
-- `pt_load_snapshot` / `pt_save_snapshot` para checkpointing
-  rápido del canvas durante experimentos. NO sustituye a `pt_save_pkt`
-  para persistencia real.
+- `pt_load_snapshot` / `pt_save_snapshot` para comparar el canvas con un estado anterior. Para restaurarlo,
+  guarda un `.pkt` con `pt_save_pkt` o `pt_checkpoint_pkt`.
 
 ## 10. Cosas que actualmente **no son posibles** (limitaciones PT 9)
 
@@ -214,9 +213,8 @@ Cuando una operación legítima no la cubre ninguna tool específica:
 - **DHCP option-150** en Server-PT: `DhcpPool` no expone setTftp /
   setOption / setBoot. Para VoIP con TFTP, mueve el DHCP al router
   (CLI) o pídele al usuario que configure la opción 150 en GUI.
-- **Undo/redo**: no expuesto en la API JS. Usa
-  `pt_save_snapshot` antes de operaciones grandes y
-  `pt_load_snapshot` para revertir.
+- **Undo/redo**: no expuesto en la API JS. Guarda
+  un `.pkt` antes de operaciones grandes y vuelve a abrirlo para revertir.
 - **CME / `telephony-service`** sólo aparece en routers ISR si activas
   la licencia: `license boot module c2900 technology-package uck9` +
   reload. Sin eso, el parser CLI rechaza los comandos VoIP.

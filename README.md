@@ -1,16 +1,16 @@
 # packet-tracer-mcp
 
-![Version](https://img.shields.io/badge/Version-0.1.0-orange?style=flat-square)
+![Version](https://img.shields.io/badge/Version-0.1.1-orange?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Experimental-yellow?style=flat-square)
 [![Repo status](https://img.shields.io/badge/Repo%20status-WIP-yellow?style=flat-square)](https://www.repostatus.org/#wip)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 
-![Packet Tracer](https://img.shields.io/badge/Packet%20Tracer-9.0.0.0810-success?style=flat-square)
+![Packet Tracer](https://img.shields.io/badge/Packet%20Tracer-9.0.1.0858-success?style=flat-square)
 ![Bun](https://img.shields.io/badge/Bun-%E2%89%A51.2-black?style=flat-square)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6?style=flat-square&logo=typescript&logoColor=white)
 
 ![CI](https://img.shields.io/github/actions/workflow/status/jcorderop02/packet-tracer-mcp/ci.yml?style=flat-square&label=CI&branch=main)
-![Tests](https://img.shields.io/badge/Tests-400%20passing-success?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-405%20passing-success?style=flat-square)
 ![MCP tools](https://img.shields.io/badge/MCP%20tools-69-blueviolet?style=flat-square)
 ![Last commit](https://img.shields.io/github/last-commit/jcorderop02/packet-tracer-mcp?style=flat-square&label=Last%20commit)
 [![PRs welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square)](https://github.com/jcorderop02/packet-tracer-mcp/issues)
@@ -21,12 +21,10 @@ bridge HTTP local y desde ahí el servidor MCP llama a la API IPC nativa
 de PT para crear topologías, configurar routers, lanzar simulaciones, etc.
 Escrito en TypeScript sobre Bun.
 
-> [!WARNING]
-> **Proyecto experimental.** Es la versión 0.1.0, hecha en mis ratos
-> libres como experimento personal. Funciona contra PT 9.0.0.0810 en mi
-> PC y pasa los smoke tests, pero no la consideres lista para
-> producción. Espera bugs, cambios de API y cosas que se rompen al
-> actualizar PT. Si te animas a probarla, abre issues con lo que veas.
+> [!NOTE]
+> Integración probada en **Cisco Packet Tracer 9.0.1.0858** en macOS.
+> Puedes consultar los escenarios probados y sus límites en la
+> [matriz de cobertura](docs/COVERAGE.md). El proyecto sigue siendo experimental.
 
 ![Demo: el MCP construye una topología en Packet Tracer 9](docs/media/demo.gif)
 
@@ -176,6 +174,19 @@ con sus 69 tools.
 </details>
 
 <details>
+<summary><strong>Codex</strong></summary>
+
+Con el servidor iniciado con `bun run start`, registra el endpoint:
+
+```bash
+codex mcp add packet-tracer --url http://127.0.0.1:39001/mcp
+```
+
+Abre una sesión nueva en Codex y ejecuta `pt_bridge_status` para validar
+la conexión con Packet Tracer.
+</details>
+
+<details>
 <summary><strong>Claude Desktop</strong></summary>
 
 Edita `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -267,6 +278,8 @@ segundo POST con `"method":"tools/list"` devuelve las 69 tools con su
 bun run build
 ./dist/packet-tracer-mcp
 ```
+
+En macOS, el build aplica una firma local para que el binario pueda arrancar en Apple Silicon.
 
 ### Tests
 
@@ -362,7 +375,7 @@ para router-on-a-stick), `pt_apply_advanced_routing`, `pt_apply_ipv6`,
 `pt_associate_default_wireless`. Configuran y vuelven a leer el canvas vivo.
 La asociación automática se limita al perfil abierto `Default` comprobado
 con WPC300N en PT 9.0.1; no reactiva la receta genérica `wifi_lan`.
-La validación requerida en PT 9.0.0.0810 sigue pendiente.
+Las herramientas añadidas en esta integración no se han probado en 9.0.0.0810.
 
 ### Persistencia (snapshots)
 
@@ -375,9 +388,11 @@ mismo en PT y tú decides.
 
 `pt_save_pkt`, `pt_open_pkt` (cuando el servidor y PT comparten
 filesystem), más `pt_save_pkt_to_bytes` y `pt_open_pkt_from_bytes` para
-mover el `.pkt` por la red. `pt_checkpoint_pkt` crea copias numeradas con
-checksum y comprobación opcional al reabrir; `pt_latest_checkpoint` verifica
-la última copia confirmada. Véase [integración y límites](docs/integration/mejoras.md). El formato comprimido `.pkz` no funciona:
+mover el `.pkt` por la red. `pt_checkpoint_pkt` guarda copias numeradas
+y `pt_latest_checkpoint` verifica la última. La opción `verifyReopen`
+reemplaza el canvas activo y compara una selección de ajustes persistentes.
+Consulta los [límites de la integración](docs/integration/mejoras.md).
+El formato comprimido `.pkz` no funciona:
 la API JS expone los métodos pero los bytes que devuelve no son válidos
 en PT 9.0.0.0810.
 
@@ -446,8 +461,8 @@ Variables de entorno (todas opcionales):
   PT 9 real, en qué estado (`verified-pt9` / `contract-verified` /
   `partial` / `broken` / `dead-end`), referencias a smoke runs y
   limitaciones conocidas del simulador que afectan al usuario.
-- [`docs/TOOLS.md`](docs/TOOLS.md) — referencia de las 69 tools MCP,
-  con parámetros, comportamiento y notas.
+- [`docs/TOOLS.md`](docs/TOOLS.md) — referencia de las herramientas originales.
+  Las 12 adicionales se describen en la [guía de integración](docs/integration/mejoras.md).
 - [`docs/RECIPES.md`](docs/RECIPES.md) — catálogo de recipes (`chain`,
   `star`, `branch_office`, `campus_vlan`, `edge_nat`, `wifi_lan`,
   `voip_lab`, `ipv6_lab`, `dual_isp`) con parámetros, ejemplos y
@@ -513,9 +528,9 @@ necesita PT abierto y la extensión cargada.
 <details>
 <summary><b>¿Qué versiones de Packet Tracer soporta?</b></summary>
 
-Solo **9.0.0.0810**. La API IPC nativa cambia entre minor versions de
-PT y este servidor está calibrado contra esa build. Versiones anteriores
-(8.x) no tienen el Script Engine moderno y no van a funcionar.
+Usa **9.0.1.0858** para reproducir las pruebas de integración actuales.
+Las pruebas de **9.0.0.0810** corresponden a la versión base del MCP.
+Consulta la [cobertura por versión](docs/COVERAGE.md) para cada escenario.
 
 </details>
 
@@ -526,8 +541,7 @@ Por comodidad, sobre todo. Bun ejecuta TypeScript sin transpilación,
 arranca en pocos milisegundos (importa cuando un cliente MCP relanza
 el servidor varias veces al día) y `bun build --compile` saca un
 binario standalone que puedes mover a otra máquina sin instalar nada.
-Node funcionaría también; simplemente acabé prefiriendo el flujo de
-Bun para esto.
+El servidor usa APIs de Bun, incluido `Bun.serve` para el bridge.
 
 </details>
 
@@ -567,7 +581,7 @@ función que devuelva un `Blueprint`, y regístrala en
 | Cliente MCP no conecta | `lsof -i :39001` → si no hay nada, arranca `bun run src/index.ts`. |
 | `pt_bridge_status` → `connected: false` | Pega el bootstrap del README en el editor de scripts de PT y pulsa Run. |
 | Canvas no se mueve | El polling se paró: vuelve a pegar el bootstrap. |
-| `pt_run_cli` devuelve vacío | Repite la llamada — `terminal length 0` se aplica al primer `enable`. |
+| `pt_run_cli` devuelve vacío | Comprueba el modo, `timedOut` y `errors` antes de repetir. |
 | `bun install` falla | `bun --version` ≥ 1.2 y `rm -rf node_modules bun.lock && bun install`. |
 
 Lista completa en [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
@@ -576,18 +590,11 @@ Lista completa en [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
 
 ## Estado
 
-Probado contra **Cisco Packet Tracer 9.0.0.0810**:
+- **9.0.1.0858 (macOS):** laboratorio de integración con CLI, DNS,
+  DHCP en Server-PT, Wi-Fi abierto `Default`, layout y reapertura de `.pkt`.
+- **9.0.0.0810:** cobertura histórica de la versión base. Incluye los 54
+  modelos del catálogo y ocho recetas.
+- **69 herramientas MCP** en esta rama. La receta `wifi_lan` sigue sin
+  ofrecer asociación automática a SSID arbitrarios.
 
-- **54 / 54** modelos del catálogo etiquetados como `verified-pt9`.
-- **69 tools MCP** con sus tests unitarios.
-- **8 de 9 recetas** verificadas de principio a fin (`chain`, `star`,
-  `branch_office`, `campus_vlan`, `edge_nat`, `dual_isp`, `voip_lab`,
-  `ipv6_lab`). La novena, `wifi_lan`, se queda a medias por una
-  limitación de la API de PT (no del MCP).
-- Capas validadas end-to-end: switching L2, servicios L3 (NAT, ACL,
-  DHCP), routing dinámico (OSPF, BGP, HSRP, EIGRP), IPv6 con OSPFv3,
-  VoIP (CME + ephone-dn), simulación y operaciones, y persistencia
-  `.pkt`.
-
-La evidencia detallada (smoke runs, capturas de pantalla y limitaciones
-conocidas) está en [`docs/COVERAGE.md`](docs/COVERAGE.md).
+Consulta [COVERAGE.md](docs/COVERAGE.md) para ver los resultados y los casos pendientes.

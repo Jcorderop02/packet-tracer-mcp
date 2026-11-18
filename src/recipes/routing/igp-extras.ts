@@ -1,8 +1,9 @@
+import { runCliScript } from "../../ipc/reliable-cli.js";
 /** IGP extras recipe. Adds passive-interface and default-information originate to existing OSPF/EIGRP/RIP processes. */
 
 import type { Bridge } from "../../bridge/http-bridge.js";
 import { wrapInConfig } from "../../ipc/cli-prologue.js";
-import { bulkCliJs, saveRunningConfigJs } from "../../ipc/generator.js";
+import { saveRunningConfigJs } from "../../ipc/generator.js";
 
 export type IgpProtocol = "ospf" | "eigrp" | "rip";
 
@@ -75,14 +76,7 @@ export async function applyIgpExtras(
   const devices = new Map<string, readonly IgpExtrasIntent[]>();
   for (const [device, list] of grouped) {
     const body = list.map(igpExtrasCli).join("\n");
-    const reply = await bridge.sendAndWait(
-      bulkCliJs(device, wrapInConfig(body)),
-      { timeoutMs: 60_000 },
-    );
-    if (reply === null) throw new Error(`IGP extras CLI on ${device} timed out`);
-    if (reply.startsWith("ERROR:") || reply.startsWith("ERR:")) {
-      throw new Error(`IGP extras CLI on ${device} rejected: ${reply}`);
-    }
+    await runCliScript(bridge, device, wrapInConfig(body));
 
     const save = await bridge.sendAndWait(saveRunningConfigJs(device), { timeoutMs: 15_000 });
     if (save === null) throw new Error(`write memory on ${device} timed out`);

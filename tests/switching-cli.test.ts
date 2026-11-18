@@ -247,7 +247,7 @@ describe("etherChannelCli", () => {
 describe("wrapInConfig", () => {
   test("wraps the body in enable + configure terminal + end", () => {
     expect(wrapInConfig("vlan 10\n exit")).toBe(
-      "enable\nterminal length 0\nconfigure terminal\nno ip domain-lookup\nvlan 10\n exit\nend",
+      "enable\nconfigure terminal\nno ip domain-lookup\nvlan 10\n exit\nend",
     );
   });
 });

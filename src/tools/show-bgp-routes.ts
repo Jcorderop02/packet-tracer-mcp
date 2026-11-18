@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { runShowRunning } from "../sim/runner.js";
-import { bulkCliJs } from "../ipc/generator.js";
+import { runCliScript } from "../ipc/reliable-cli.js";
 import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
 import type { ToolModule } from "./types.js";
 
@@ -82,25 +81,14 @@ export const registerShowBgpRoutesTool: ToolModule = ({ bridge, server }) => {
       if (blocked) return blocked;
 
       const cmd = vrf ? `show ip bgp vpnv4 vrf ${vrf}` : "show ip bgp";
-      const block = ["enable", "terminal length 0", cmd].join("\n");
-      const raw = await bridge.sendAndWait(bulkCliJs(device, block, 16_000), { timeoutMs: 30_000 });
-      if (raw === null) return errorResult("Timed out waiting for PT to answer.");
-      if (raw === "ERR:not_found") return errorResult(`Device '${device}' not found.`);
-      if (raw.startsWith("ERR:") || raw.startsWith("ERROR:")) {
-        return errorResult(`PT raised on '${cmd}': ${raw}`);
+      let out: string;
+      try {
+        out = await runCliScript(bridge, device, `enable\n${cmd}`);
+      } catch (error) {
+        return errorResult(String(error));
       }
-      // Unwrap bulkCli envelope: `BULK|<count>|<truncated>\n<output>`.
-      const newlineIdx = raw.indexOf("\n");
-      const out = newlineIdx >= 0 ? raw.slice(newlineIdx + 1) : raw;
-
       if (/% BGP not active/i.test(out) || /No active TCP connection/i.test(out)) {
         return errorResult(`BGP is not active on '${device}'.`);
-      }
-      // Some IOS variants reject `terminal length 0` — fallback to runShowRunning.
-      if (/Invalid input/i.test(out) && !/Network/i.test(out)) {
-        const fallback = await runShowRunning(bridge, device, undefined, 16_000)
-          .catch(e => `ERR:${(e as Error).message}`);
-        if (fallback.startsWith("ERR:")) return errorResult(`Fallback failed: ${fallback}`);
       }
 
       const rows = parseBgp(out);

@@ -1,8 +1,9 @@
+import { runCliScript } from "../../ipc/reliable-cli.js";
 /** HSRP recipe. Applies per-interface `standby` directives to routers and persists running→startup. */
 
 import type { Bridge } from "../../bridge/http-bridge.js";
 import { wrapInConfig } from "../../ipc/cli-prologue.js";
-import { bulkCliJs, saveRunningConfigJs } from "../../ipc/generator.js";
+import { saveRunningConfigJs } from "../../ipc/generator.js";
 
 export interface HsrpIntent {
   readonly device: string;
@@ -66,14 +67,7 @@ function groupByDevice(intents: readonly HsrpIntent[]): Map<string, HsrpIntent[]
 }
 
 async function pushCli(bridge: Bridge, device: string, body: string): Promise<void> {
-  const reply = await bridge.sendAndWait(
-    bulkCliJs(device, wrapInConfig(body)),
-    { timeoutMs: 60_000 },
-  );
-  if (reply === null) throw new Error(`HSRP CLI on ${device} timed out`);
-  if (reply.startsWith("ERR:") || reply.startsWith("ERROR:")) {
-    throw new Error(`HSRP CLI on ${device} rejected: ${reply}`);
-  }
+  await runCliScript(bridge, device, wrapInConfig(body));
 }
 
 async function saveStartup(bridge: Bridge, device: string): Promise<void> {

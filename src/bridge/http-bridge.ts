@@ -1,3 +1,5 @@
+import { withLabel } from "../ipc/label.js";
+
 type BunServer = ReturnType<typeof Bun.serve>;
 
 /**
@@ -64,6 +66,7 @@ export class Bridge {
     if (this.bunServer) return;
     this.bunServer = Bun.serve({
       port: this.port,
+      hostname: "127.0.0.1",
       fetch: (req) => this.handle(req),
     });
   }
@@ -229,10 +232,14 @@ function wrapForResult(jsExpression: string, port: number, explicitLabel?: strin
   const embeddedLabel = match?.[1] ? match[1].replace(/\s+/g, " ").trim() : null;
   const code = match ? jsExpression.slice(match[0].length) : jsExpression;
   const label = explicitLabel?.trim() || embeddedLabel || null;
-  const prefix = label ? `/* ${label.replace(/\*\//g, "* /")} */ ` : "";
   // Numeric UTF-16 source avoids quote/newline corruption in PT webview eval.
   const units = Array.from({ length: code.length }, (_, i) => code.charCodeAt(i));
-  const safeEval = `eval(String.fromCharCode.apply(null,[${units.join(",")}]))`;
+  const chunks: string[] = [];
+  for (let i = 0; i < units.length; i += 16_384) {
+    chunks.push(`String.fromCharCode.apply(null,[${units.slice(i, i + 16_384).join(",")}])`);
+  }
+  const safeEval = `eval(${chunks.join("+") || '""'})`;
   const correlated = `(function(){var value;try{value=String(${safeEval});}catch(e){value="ERROR:"+String(e);}return JSON.stringify({__mcpRequestId:${JSON.stringify(id)},value:value}).replace(/[^\\x20-\\x7e]/g,function(c){return "\\\\u"+("0000"+c.charCodeAt(0).toString(16)).slice(-4);});})()`;
-  return `${prefix}__mcpEval(${JSON.stringify(correlated)},${port});`;
+  const command = `__mcpEval(${JSON.stringify(correlated)},${port});`;
+  return label ? withLabel(label, command) : command;
 }

@@ -1,5 +1,4 @@
-/** Read-only validation against an already connected upstream MCP server.
- * No user topology/configuration is modified. */
+/** Validate through a connected upstream MCP. --fixture edits an empty canvas. */
 import { z } from "zod";
 import { ALL_TOOLS } from "../src/tools/index.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -38,7 +37,7 @@ try{
     const handlers=new Map<string,{schema:z.ZodObject;run:(a:unknown)=>Promise<{isError?:boolean;content:{type:string;text?:string}[]}>}>();
     const server={tool:(name:string,_description:string,schema:z.ZodRawShape,run:never)=>handlers.set(name,{schema:z.object(schema),run})} as unknown as McpServer;
     for(const register of ALL_TOOLS)register({bridge,server});
-    const invoke=async(name:string,args:unknown)=>{const t=handlers.get(name)!;const r=await t.run(t.schema.parse(args));const value=r.content.map(c=>c.text??"").join("\n");if(r.isError)throw new Error(`${name}: ${value}`);report(`PASS: ${name}`);if(name==="pt_verify_dns")report(value);return value;};
+    const invoke=async(name:string,args:unknown)=>{const t=handlers.get(name)!;const r=await t.run(t.schema.parse(args));const value=r.content.map(c=>c.text??"").join("\n");if(r.isError)throw new Error(`${name}: ${value}`);if(name!=="pt_verify_dns")report(`PASS: ${name}`);return value;};
     const directory=process.env.PT_FIXTURE_DIR??"/private/tmp/packet-tracer-mcp-integration-fixture";mkdirSync(directory,{recursive:true});
     if(!resume){
     for(const [name,model] of [["TestWRT","wrt300n"],["TestSW1","2960-24TT"],["TestSW2","2960-24TT"],["TestAP","ap-n"],["TestDNS","Server-PT"],["TestDHCP","Server-PT"],["TestLaptop","Laptop-PT"]])await invoke("pt_add_device",{name,model});
@@ -64,6 +63,7 @@ try{
     await invoke("pt_latest_checkpoint",{directory});
     const until=Date.now()+45000;let ping;do{ping=JSON.parse(await invoke("pt_verify_dns",{device:"TestLaptop",hostname:"test.example"}));if(ping.resolved&&ping.icmp.successRate===100&&ping.icmp.complete)break;await Bun.sleep(1000);}while(Date.now()<until);
     if(!ping?.resolved||ping.icmp.successRate!==100||!ping.icmp.complete)throw new Error("DNS/ICMP verification failed after convergence.");
+    report(JSON.stringify(ping));
     report("PASS: fixture configuration, association, CLI, layout, DNS resolution and save/reopen persistence");
   }
   if(process.argv.includes("--verify-connectivity")){report(await bridge.sendAndWait(readWirelessJs("TestLaptop")));report(JSON.stringify(await runPing(bridge,"TestLaptop","test.example")));}
@@ -72,5 +72,5 @@ try{
     const probes=/WRT/i.test(d.model)?[readWrtJs(d.name)]:/Server/i.test(d.model)?[readDnsJs(d.name),readDhcpJs(d.name,"FastEthernet0",true)]:/Laptop|Notebook/i.test(d.model)?[readWirelessJs(d.name),readEndpointJs(d.name)]:[];
     for(const code of probes){const reply=await bridge.sendAndWait(code);if(!reply||/^(ERR|ERROR):/.test(reply))throw new Error(`Native readback failed (${d.model}): ${reply}`);JSON.parse(reply);checked++;}
   }
-  report(`PASS: ${checked} native readbacks; no topology modified`);
+  report(`PASS: ${checked} native readbacks`);
 }finally{active=false;await worker;bridge.stop();await client.close();}

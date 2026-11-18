@@ -17,3 +17,25 @@ test("pt_set_pc accepts OK suffix and verifies requested DHCP interface through 
   const {server,client}=await connected(fake);
   try{const result=await client.callTool({name:"pt_set_pc",arguments:{device:"Notebook",mode:"dhcp",port:"Wireless0"}});expect(result.isError).not.toBe(true);expect(JSON.stringify(result.content)).toContain("Wireless0");}finally{await client.close();await server.close();}
 });
+
+test("pt_configure_dns rejects a deletion that did not persist", async () => {
+  const state = JSON.stringify({
+    enabled: true, records: [{ name: "test.example", ip: "192.0.2.2", type: 1 }],
+  });
+  const fake = {
+    status: () => ({ connected: true }),
+    sendAndWait: async (code: string) => code.includes("removeARecord") ? "OK" : state,
+  } as unknown as Bridge;
+  const { server, client } = await connected(fake);
+  try {
+    const result = await client.callTool({
+      name: "pt_configure_dns",
+      arguments: { device: "DNS", remove: [{ name: "TEST.example.", ip: "192.0.2.2" }] },
+    });
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain("DNS readback mismatch");
+  } finally {
+    await client.close();
+    await server.close();
+  }
+});
