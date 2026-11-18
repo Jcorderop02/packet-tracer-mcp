@@ -1,17 +1,17 @@
 # packet-tracer-mcp
 
-![Version](https://img.shields.io/badge/Version-0.1.1-orange?style=flat-square)
+![Version](https://img.shields.io/badge/Version-0.1.2-orange?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Experimental-yellow?style=flat-square)
 [![Repo status](https://img.shields.io/badge/Repo%20status-WIP-yellow?style=flat-square)](https://www.repostatus.org/#wip)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 
 ![Packet Tracer](https://img.shields.io/badge/Packet%20Tracer-9.0.1.0858-success?style=flat-square)
 ![Bun](https://img.shields.io/badge/Bun-%E2%89%A51.2-black?style=flat-square)
-![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-7.x-3178C6?style=flat-square&logo=typescript&logoColor=white)
 
 ![CI](https://img.shields.io/github/actions/workflow/status/jcorderop02/packet-tracer-mcp/ci.yml?style=flat-square&label=CI&branch=main)
-![Tests](https://img.shields.io/badge/Tests-405%20passing-success?style=flat-square)
-![MCP tools](https://img.shields.io/badge/MCP%20tools-69-blueviolet?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-430%20passing-success?style=flat-square)
+![MCP tools](https://img.shields.io/badge/MCP%20tools-84-blueviolet?style=flat-square)
 ![Last commit](https://img.shields.io/github/last-commit/jcorderop02/packet-tracer-mcp?style=flat-square&label=Last%20commit)
 [![PRs welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square)](https://github.com/jcorderop02/packet-tracer-mcp/issues)
 
@@ -166,7 +166,7 @@ claude mcp add --transport http packet-tracer http://127.0.0.1:39001/mcp
 ```
 
 Verify with `/mcp` inside Claude Code: `packet-tracer` should appear
-with its 69 tools.
+with its 84 tools.
 </details>
 
 <details>
@@ -264,7 +264,7 @@ curl -sS -X POST http://127.0.0.1:39001/mcp \
 ```
 
 It must return a `result` with `serverInfo.name = "packet-tracer-mcp"`.
-A second POST with `"method":"tools/list"` returns all 69 tools with
+A second POST with `"method":"tools/list"` returns all 84 tools with
 their `inputSchema`.
 </details>
 
@@ -317,7 +317,17 @@ off, that kind of thing) and tells you what it would not touch.
 
 ## Capabilities
 
-`packet-tracer-mcp` exposes **69 MCP tools** grouped by domain.
+`packet-tracer-mcp` exposes **84 MCP tools** grouped by domain.
+
+### New in 0.1.2
+
+Four live labs went from 550.5 s to 235.2 s with 500 ms polling and to
+188.6 s with continuous polling on the test Mac. The MCP reconstructs
+cable endpoints after opening a `.pkt` file. It also configures Server-PT
+HTTP/TFTP, verifies HTTP from a simulated client, and adds BGP/OSPF
+diagnostics, simulation events and physical inventory. It also checks complete labs, diagnoses Layer 2,
+measures failover, and reads activity instructions and progress. See
+[tools](docs/TOOLS.md#herramientas-de-012) and [coverage](docs/COVERAGE.md).
 
 ### Bridge & diagnostics
 
@@ -368,7 +378,8 @@ sub-interfaces for router-on-a-stick), `pt_apply_advanced_routing`,
 `pt_install_wireless_adapter`, `pt_read_wireless_client`, and
 `pt_associate_default_wireless` configure and read back the live canvas.
 Automatic association is limited to the open `Default` profile tested with
-WPC300N on PT 9.0.1; generic `wifi_lan` remains unsupported.
+WPC300N on PT 9.0.1.0858. The `wifi_lan` recipe uses that profile, verifies
+the AP and waits for DHCP.
 The tools introduced in this integration have not been tested on 9.0.0.0810.
 
 ### Snapshots (no plans)
@@ -413,7 +424,7 @@ are not valid in PT 9.0.0.0810.
 | `dual_isp` | two ISPs with eBGP + HSRP on the edge routers. |
 | `voip_lab` | CME router + switch + N IP Phone 7960s; provisions telephony-service, ephone-dn, voice VLAN and DHCP option-150. |
 | `ipv6_lab` | dual-stack IPv4 + IPv6 with OSPFv3. |
-| `wifi_lan` | router + AccessPoint + laptops. **Limited**: PT 9's public JS API does not trigger radio association (see `docs/COVERAGE.md`). |
+| `wifi_lan` | router + open `Default` AP + laptops with DHCP and verified association. |
 
 The first three accept `routing: 'static' | 'ospf' | 'eigrp' | 'rip' |
 'none'` and `dhcp: true|false`. `campus_vlan` also accepts
@@ -493,10 +504,9 @@ scripts/         smoke.ts (verification suite against real PT)
 <details>
 <summary><b>What is this for, exactly?</b></summary>
 
-So an LLM (Claude, ChatGPT, Gemini — anything with an MCP client) can
-create, configure and validate topologies in Packet Tracer 9 without
-you touching the GUI. Useful for prepping CCNA/CCNP labs, generating
-practice scenarios, or automating repetitive networking tasks.
+With an MCP client such as Codex, Claude Code, or Gemini CLI, you can
+build, configure, and verify topologies in Packet Tracer 9. Use it to
+prepare CCNA/CCNP labs and automate repetitive configuration tasks.
 
 </details>
 
@@ -579,7 +589,7 @@ Full list in [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
   DHCP, open `Default` Wi-Fi, layout and `.pkt` reopen.
 - **9.0.0.0810:** historical baseline coverage, including 54 device models
   and eight recipes.
-- **69 MCP tools** on this branch. The `wifi_lan` recipe still lacks
+- **84 MCP tools** on this branch. The `wifi_lan` recipe still lacks
   automatic association to arbitrary SSIDs.
 
 See [COVERAGE.md](docs/COVERAGE.md) for results and remaining checks.

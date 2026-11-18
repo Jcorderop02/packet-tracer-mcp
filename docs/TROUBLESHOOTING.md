@@ -69,14 +69,11 @@ no se ha ejecutado.
 
 **Fix:**
 
-1. Abre Packet Tracer 9 y comprueba que la extensión está activa
-   (Extensions → Manage Extensions). Si no aparece, copia
-   `extension/` al directorio de extensiones de PT y reinicia.
-2. Abre el editor de scripts (Extensions → Scripting) y pega el
-   bootstrap del `README.md`. Pulsa **Run**.
-3. La consola del editor debería mostrar `[mcp-bridge] polling…` cada
-   ~500 ms.
-4. Vuelve a llamar a `pt_bridge_status`.
+1. Abre Packet Tracer 9 y comprueba que el módulo MCP Bridge está
+   cargado en Extensions → Scripting → Configure PT Script Modules.
+2. Abre la ventana de MCP Bridge y comprueba que su estado indica
+   «Conectado».
+3. Vuelve a llamar a `pt_bridge_status`.
 
 Si el bootstrap se ejecuta sin error pero `connected` sigue en `false`,
 mira en `lsof -i :54321` para confirmar que el puerto del bridge está

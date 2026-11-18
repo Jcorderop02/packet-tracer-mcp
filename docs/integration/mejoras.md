@@ -39,7 +39,7 @@ Instala WPC300N, configura un AP abierto `Default` y consulta su MAC. La asociac
 
 El snapshot incorpora enlaces WiFi observados por MAC y puerto enlazado. El layout de LANs con cascadas usa un bosque de jerarquías, mantiene las profundidades de los switches/AP/clientes y reserva ancho por subárbol. Las topologías simples conservan la política anterior. En grafos cíclicos o enlaces compartidos pueden quedar cruces; no es un optimizador global de todos los cables.
 
-La API de enlaces cableados de PT sigue siendo opaca. Un `.pkt` cargado antes de iniciar el servidor no aporta automáticamente parejas de puertos al registro en memoria. Por eso el layout depende de los enlaces creados por el MCP o de un registro conocido, además de las asociaciones WiFi observadas.
+En 9.0.1.0858 el snapshot obtiene los dos extremos de cada cable del objeto IPC. Por eso el layout y el diagnóstico reconocen cableado creado en la GUI o cargado desde un `.pkt`. Las asociaciones Wi-Fi se observan también por MAC.
 
 ## Checkpoints y recuperación
 

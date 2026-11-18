@@ -1,5 +1,7 @@
 # Cobertura verificada contra Packet Tracer 9
 
+*Última actualización: 2026-11-18.*
+
 Comprobaciones del MCP en Cisco Packet Tracer. La integración actual se
 probó en **9.0.1.0858** en macOS. Las tablas históricas corresponden a
 **9.0.0.0810** y a la versión base del MCP. Las referencias de
@@ -217,7 +219,7 @@ API nativa IPv6 disponible en `HostPort` (verified contract):
 
 ---
 
-## Wireless (parcial — limitación de la API)
+## Wireless histórico en 9.0.0.0810
 
 Receta `wifi_lan` marcada **`dead-end`** en su forma actual. La API JS
 pública de PT 9 persiste configuración (`setSsid`, `setEncryptType`,
@@ -275,9 +277,9 @@ verificada con `scripts/probe-fase8b.ts` antes del smoke.
 **Sobre reactividad**: `registerObjectEvent` existe en la API JS pero
 acepta cualquier nombre sin validar y nunca entrega callbacks
 (verificado en 4 rondas de probe con 12 firmas distintas). El MCP usa
-polling sobre el bridge HTTP (~500 ms), que para verificar `link up`
-post-`createLink` baja a <1 s con `linkUpStatusJs` (un único IPC call
-con `port.getLink() + isPortUp() + isProtocolUp()`).
+peticiones HTTP con espera corta para entregar los comandos. La verificación
+de `link up` usa `linkUpStatusJs`, que consulta `port.getLink()`,
+`isPortUp()` e `isProtocolUp()` en una llamada IPC.
 
 ---
 
@@ -418,7 +420,7 @@ Para validación manual sin smoke runner:
 
 ---
 
-## Cobertura por números
+## Cobertura histórica de 9.0.0.0810
 
 - **54 / 54** modelos del catálogo `verified-pt9`.
 - **27 / 27 + 1 SKIP** modelos en la batería CLI por-modelo (`PT8200`
@@ -443,4 +445,122 @@ Para validación manual sin smoke runner:
 
 ---
 
-*Última actualización: 2026-05-01.*
+## Rendimiento de 0.1.2 en 9.0.1.0858
+
+Mismos casos y mismo Mac, con Packet Tracer 9.0.1.0858. Los tiempos
+incluyen arranque, cableado, configuración, comprobaciones y limpieza.
+Se probaron la cadencia de 500 ms de la extensión incluida y el
+sondeo continuo generado por `pt_bridge_status`.
+
+| Caso | Base | Primera medición de 0.1.2 | Optimizada a 500 ms | Optimizada con sondeo continuo |
+|---|---:|---:|---:|---:|
+| Campus VLAN | 95,5 s | 81,0 s | 60,6 s | 47,9 s |
+| NAT | 134,0 s | 104,0 s | 80,3 s | 69,2 s |
+| IPv6 | 133,0 s | 87,0 s | 29,6 s | 6,1 s |
+| Dos ISP | 188,0 s | 150,0 s | 64,7 s | 65,4 s |
+| **Total** | **550,5 s** | **422,0 s** | **235,2 s** | **188,6 s** |
+
+Los cuatro casos pasaron en ambas rondas. Frente a la primera medición
+de 0.1.2, el total bajó un **44 %** con la cadencia de 500 ms y un
+**55 %** con sondeo continuo. Frente a la base, bajó un 57 % y un 66 %.
+
+El bridge responde en cuanto la cola recibe trabajo si tiene una
+petición abierta. La CLI ejecuta hasta ocho líneas síncronas por
+llamada y conserva la paginación y el sondeo de comandos pendientes.
+Cada ronda de arranque consulta todos los routers y switches pendientes.
+El direccionamiento de los equipos finales se aplica en lotes con
+lectura posterior por dispositivo. Una sola captura verifica todos
+los enlaces previstos en cada ronda de cableado.
+
+La reinstanciación en 9.0.1.0858 confirmó los modelos WLC-2504,
+WLC-3504, WLC-PT, PLC-PT y HMI-PT y sus puertos Ethernet. El soporte
+cubre colocación y lectura de puertos. La configuración de controladores
+y los protocolos industriales requieren pruebas por separado.
+
+En 0.1.2 con 9.0.1.0858, `wifi_lan` con perfil abierto `Default`
+instaló WPC300N, comprobó la MAC de AP1, obtuvo `192.168.0.7` por
+DHCP y completó el ping a la puerta de enlace. La receta con el bridge
+optimizado pasó esta comprobación en 10,2 s. El probe de SSID abierto
+personalizado no consiguió asociación. WPA2 también guardó el SSID
+en el cliente, pero no produjo un enlace al AP.
+
+En pruebas adicionales de 9.0.1.0858:
+
+- Server-PT sirvió por HTTP un marcador desde un PC simulado. También
+  recibió 623 bytes por TFTP desde un router del laboratorio.
+- OSPF mostró un vecino `FULL`, instaló `203.0.113.2/32` y tuvo 5/5
+  respuestas ICMP. El diagnóstico BGP lee el estado explícito del vecino.
+  En el probe sin peer, el resumen mostraba un número aunque el detalle
+  marcaba `Connecting`. En otra topología, dos 2911 formaron eBGP,
+  instalaron la ruta remota /32 y lograron 5/5 respuestas ICMP.
+- HSRP recuperó el acceso a la IP virtual aproximadamente 17 s después
+  de iniciar el apagado de la interfaz primaria. La comprobación cubre
+  el gateway de la LAN.
+- La simulación expuso eventos de un PDU, incluidos descartes, y el árbol
+  físico identificó los equipos por nombre lógico y nombre físico.
+- El ciclo de guardar y abrir `.pkt` por bytes recuperó ambos extremos
+  de un cable después de borrar los equipos originales.
+
+## Diagnóstico de laboratorios en 9.0.1.0858
+
+- `pt_verify_lab` confirmó un destino alcanzable, otro aislado, una
+  resolución DNS y una página HTTP en una sola batería.
+- `pt_diagnose_l2` identificó cuatro enlaces, cuatro MAC aprendidas y
+  cuatro puertos STP en un 2960.
+- `pt_verify_failover` confirmó la recuperación del gateway HSRP en
+  18,9 s y que la interfaz probada volvió a `up/up`. En otra topología,
+  el siguiente salto pasó de `10.0.0.2` a `10.0.0.6` mediante una ruta
+  estática flotante en 8,2 s, con restauración confirmada. En una
+  topología eBGP, la tabla BGP mostró dos candidatos antes del corte.
+  El respaldo no apareció en la tabla de rutas dentro de la ventana
+  de 45 s. La herramienta informó el fallo y restauró la interfaz.
+- `pt_simulation_events` con `details: true` devolvió el puerto de salida
+  y las decisiones de ARP e ICMP registradas en una trama.
+- `pt_read_activity` se probó con una actividad simulada en los tests y
+  rechazó un proyecto `.pkt` en Packet Tracer. La lectura de una
+  actividad `.pka` real requiere validación en una sesión de prueba.
+
+## Servicios, descubrimiento y E/S en 9.0.1.0858
+
+- Syslog recibió siete eventos de un router en Server-PT. El MCP
+  devolvió origen y mensaje.
+- NTP detectó al servidor configurado antes de sincronizarse. Tras la
+  convergencia, el router seleccionó el Server-PT y quedó en estrato 2.
+- El PC recibió el saludo FTP `220` de Server-PT y la herramienta
+  cerró la conexión al llegar al diálogo de usuario. La prueba cubre
+  la conexión de control hasta el saludo.
+- CDP y LLDP identificaron al vecino 2960 y los puertos de ambos extremos
+  desde un 2911.
+- OSPFv3 mostró el vecino `2.2.2.2` en `FULL/DR`, instaló
+  `2001:db8:2::/64` y registró 5/5 respuestas en el ping IPv6.
+- El PLC-PT expuso ranuras digitales y analógicas. La lectura recuperó
+  nombres, valores iniciales y cambios en la dirección de las ranuras.
+
+## AP ligeros y WLC en 9.0.1.0858
+
+El MCP colocó `3702i` y `LAP-PT` con el tipo nativo 44 y leyó
+`GigabitEthernet0` y `Dot11Radio0`. En una copia del ejemplo oficial
+`wlc_2504_simple_wlan_dhcp.pkt`, el LAP-PT obtuvo IP por DHCP. Dos
+clientes de `ssid1` obtuvieron sus propias concesiones y publicaron la
+MAC de `Dot11Radio0` del LAP-PT. `pt_read_wireless_client` identificó
+el AP y la captura del lienzo mostró el enlace inalámbrico. Un cliente
+recibió 3/4 respuestas ICMP de la IP de gestión del WLC.
+
+La API expone `CapwapProcess` como objeto genérico en el AP sin un
+método comprobado para leer su registro en el WLC. Packet Tracer se
+cerró al avanzar paso a paso en un laboratorio WLC montado desde cero.
+El ejemplo oficial se comprobó en tiempo real.
+
+## Capacidades pendientes
+
+| Área | Siguiente comprobación |
+|---|---|
+| FTP | Verificar una transferencia autenticada con un archivo de prueba. |
+| Inalámbrico gestionado | Queda leer el registro en el controlador. El laboratorio de referencia es una copia del ejemplo oficial `wlc_2504_simple_wlan_dhcp.pkt`, incluido en `saves/01 Networking/Wireless/Wireless LAN/WLC`. Comparar la MAC del AP en el controlador con la observada por el cliente. Para un 3702i, Packet Tracer ofrece **Config → WLC → Primary Controller**. |
+| IoT e industrial | Verificar cambios de señal simulados en sensores y leer señales de E/S en una práctica cableada. Validar los protocolos industriales por modelo. |
+| Escenarios y actividades | Para listar y confirmar escenarios, el control visible es el selector del panel **User Created Packet Window**. La API solicita activación por índice y carece de una lectura comprobada del listado o de la selección. La prueba de lectura debe comparar dos escenarios renombrados en el selector, cambiar entre ellos y verificar los nombres al reabrir el archivo. |
+
+Consulta la ayuda de Cisco sobre
+[AP ligeros](https://tutorials.ptnetacad.net/help/default/config_others.htm),
+[controladores WLC](https://tutorials.ptnetacad.net/help/default/config_WLCs.htm)
+y [escenarios de simulación](https://tutorials.ptnetacad.net/help/default/mode_simulation_Scenarios.htm).

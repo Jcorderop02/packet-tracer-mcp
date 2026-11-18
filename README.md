@@ -1,17 +1,17 @@
 # packet-tracer-mcp
 
-![Version](https://img.shields.io/badge/Version-0.1.1-orange?style=flat-square)
+![Version](https://img.shields.io/badge/Version-0.1.2-orange?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Experimental-yellow?style=flat-square)
 [![Repo status](https://img.shields.io/badge/Repo%20status-WIP-yellow?style=flat-square)](https://www.repostatus.org/#wip)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 
 ![Packet Tracer](https://img.shields.io/badge/Packet%20Tracer-9.0.1.0858-success?style=flat-square)
 ![Bun](https://img.shields.io/badge/Bun-%E2%89%A51.2-black?style=flat-square)
-![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-7.x-3178C6?style=flat-square&logo=typescript&logoColor=white)
 
 ![CI](https://img.shields.io/github/actions/workflow/status/jcorderop02/packet-tracer-mcp/ci.yml?style=flat-square&label=CI&branch=main)
-![Tests](https://img.shields.io/badge/Tests-405%20passing-success?style=flat-square)
-![MCP tools](https://img.shields.io/badge/MCP%20tools-69-blueviolet?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-430%20passing-success?style=flat-square)
+![MCP tools](https://img.shields.io/badge/MCP%20tools-84-blueviolet?style=flat-square)
 ![Last commit](https://img.shields.io/github/last-commit/jcorderop02/packet-tracer-mcp?style=flat-square&label=Last%20commit)
 [![PRs welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square)](https://github.com/jcorderop02/packet-tracer-mcp/issues)
 
@@ -170,7 +170,7 @@ claude mcp add --transport http packet-tracer http://127.0.0.1:39001/mcp
 ```
 
 Verifica con `/mcp` dentro de Claude Code: debe aparecer `packet-tracer`
-con sus 69 tools.
+con sus 84 tools.
 </details>
 
 <details>
@@ -268,7 +268,7 @@ curl -sS -X POST http://127.0.0.1:39001/mcp \
 ```
 
 Debe devolver un `result` con `serverInfo.name = "packet-tracer-mcp"`. Un
-segundo POST con `"method":"tools/list"` devuelve las 69 tools con su
+segundo POST con `"method":"tools/list"` devuelve las 84 tools con su
 `inputSchema`.
 </details>
 
@@ -323,7 +323,17 @@ atreve a tocar.
 
 ## Capacidades
 
-`packet-tracer-mcp` expone **69 herramientas MCP** agrupadas por dominio.
+`packet-tracer-mcp` expone **84 herramientas MCP** agrupadas por dominio.
+
+### Novedades de 0.1.2
+
+Cuatro laboratorios pasaron de 550,5 s a 235,2 s con el sondeo de 500 ms
+y a 188,6 s con sondeo continuo en el Mac de prueba. El MCP reconstruye al abrir un `.pkt` los enlaces que Packet Tracer expone.
+También configura HTTP/TFTP en Server-PT, verifica HTTP desde un equipo
+simulado y añade diagnósticos BGP/OSPF, eventos de simulación e inventario
+físico. También permite verificar un laboratorio completo, diagnosticar
+capa 2, medir failover y consultar actividades. Consulta [las herramientas](docs/TOOLS.md#herramientas-de-012) y
+[los resultados por escenario](docs/COVERAGE.md).
 
 ### Bridge y diagnóstico
 
@@ -374,7 +384,8 @@ para router-on-a-stick), `pt_apply_advanced_routing`, `pt_apply_ipv6`,
 `pt_install_wireless_adapter`, `pt_read_wireless_client` y
 `pt_associate_default_wireless`. Configuran y vuelven a leer el canvas vivo.
 La asociación automática se limita al perfil abierto `Default` comprobado
-con WPC300N en PT 9.0.1; no reactiva la receta genérica `wifi_lan`.
+con WPC300N en PT 9.0.1.0858. La receta `wifi_lan` usa ese perfil,
+verifica el AP y espera DHCP.
 Las herramientas añadidas en esta integración no se han probado en 9.0.0.0810.
 
 ### Persistencia (snapshots)
@@ -423,7 +434,7 @@ opcional).
 | `dual_isp` | dos ISPs con BGP eBGP + HSRP en routers de borde. |
 | `voip_lab` | router CME + switch + N IP Phones 7960; provisiona telephony-service, ephone-dn, voice VLAN y DHCP option-150. |
 | `ipv6_lab` | dual-stack IPv4 + IPv6 con OSPFv3. |
-| `wifi_lan` | router + AccessPoint + laptops. **Limitada**: la API JS pública de PT 9 no dispara la asociación radio (ver `docs/COVERAGE.md`). |
+| `wifi_lan` | router + AP abierto `Default` + portátiles con DHCP y asociación verificada. |
 
 Las primeras tres admiten `routing: 'static' | 'ospf' | 'eigrp' | 'rip' |
 'none'` y `dhcp: true|false`. `campus_vlan` acepta además `startVlanId`,
@@ -508,10 +519,9 @@ scripts/         smoke.ts (suite de verificación contra PT real)
 <details>
 <summary><b>¿Para qué sirve esto exactamente?</b></summary>
 
-Para que un LLM (Claude, ChatGPT, Gemini, lo que sea con cliente MCP)
-pueda crear, configurar y validar topologías en Packet Tracer 9 sin
-que tú toques el GUI. Útil para preparar laboratorios CCNA/CCNP,
-generar escenarios de prácticas, o automatizar tareas repetitivas.
+Con un cliente MCP como Codex, Claude Code o Gemini CLI puedes crear,
+configurar y verificar topologías en Packet Tracer 9. Puedes preparar
+laboratorios CCNA/CCNP y automatizar tareas de configuración repetitivas.
 
 </details>
 
@@ -580,7 +590,7 @@ función que devuelva un `Blueprint`, y regístrala en
 |---------|------------|
 | Cliente MCP no conecta | `lsof -i :39001` → si no hay nada, arranca `bun run src/index.ts`. |
 | `pt_bridge_status` → `connected: false` | Pega el bootstrap del README en el editor de scripts de PT y pulsa Run. |
-| Canvas no se mueve | El polling se paró: vuelve a pegar el bootstrap. |
+| Canvas no se mueve | Abre la extensión MCP Bridge y comprueba su estado de conexión. |
 | `pt_run_cli` devuelve vacío | Comprueba el modo, `timedOut` y `errors` antes de repetir. |
 | `bun install` falla | `bun --version` ≥ 1.2 y `rm -rf node_modules bun.lock && bun install`. |
 
@@ -594,7 +604,7 @@ Lista completa en [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
   DHCP en Server-PT, Wi-Fi abierto `Default`, layout y reapertura de `.pkt`.
 - **9.0.0.0810:** cobertura histórica de la versión base. Incluye los 54
   modelos del catálogo y ocho recetas.
-- **69 herramientas MCP** en esta rama. La receta `wifi_lan` sigue sin
+- **84 herramientas MCP** en esta rama. La receta `wifi_lan` sigue sin
   ofrecer asociación automática a SSID arbitrarios.
 
 Consulta [COVERAGE.md](docs/COVERAGE.md) para ver los resultados y los casos pendientes.

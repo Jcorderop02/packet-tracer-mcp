@@ -1,6 +1,6 @@
 # Referencia de tools MCP
 
-Esta referencia cubre las 57 herramientas originales. Las 12 añadidas se documentan en la [guía de integración](integration/mejoras.md).
+Esta referencia cubre las herramientas originales y las de 0.1.2. Las 12 herramientas de la integración anterior se documentan en la [guía de integración](integration/mejoras.md).
 
 ## Índice
 
@@ -15,6 +15,7 @@ Esta referencia cubre las 57 herramientas originales. Las 12 añadidas se docume
 - [Simulation / ops](#simulation--ops)
 - [.pkt persistence](#pkt-persistence)
 - [Escape hatch](#escape-hatch)
+- [Herramientas de 0.1.2](#herramientas-de-012)
 
 ## Pre-flight planning
 
@@ -42,9 +43,12 @@ Esta referencia cubre las 57 herramientas originales. Las 12 añadidas se docume
 
 ### `pt_list_devices`
 
-> Enumerate the device models that packet-tracer-mcp knows how to instantiate, with their port lists and the alias shortcuts accepted by other tools.
+> List supported models in the MCP catalog, or enumerate the installed Packet Tracer palette by category.
 
-**Parámetros:** ninguno.
+**Parámetros**
+
+- `source` admite `catalog` por defecto o `palette`. La paleta consulta
+  la instancia de Packet Tracer y marca qué modelos reconoce el catálogo del MCP.
 
 **Notas:** Catálogo estático del lado servidor. Útil antes de llamar a `pt_add_device` para conocer modelos válidos y los alias que aceptan otras tools.
 
@@ -168,7 +172,7 @@ Esta referencia cubre las 57 herramientas originales. Las 12 añadidas se docume
 - `cable` (enum, opcional) — `straight` (por defecto), `cross`, `fiber`, `serial`, `console`, `coaxial`.
 - `confirm_internal_lan` (boolean, opcional) — flag obligatorio si se intenta cablear dos routers con `straight`/`cross`.
 
-**Notas:** Por defecto rechaza Ethernet entre dos routers sin confirmación explícita (el error más típico de los LLMs en labs académicos). El cable `console` se rechaza si los puertos no parecen `Console`/`RS-232`. Tras un cable serial recuerda configurar `clock rate` en el lado DCE. Mantiene un registro local en `linkRegistry` porque la API JS de Link en PT 9 es opaca.
+**Notas:** Por defecto rechaza Ethernet entre dos routers sin confirmación explícita (el error más típico de los LLMs en labs académicos). El cable `console` se rechaza si los puertos no parecen `Console`/`RS-232`. Tras un cable serial recuerda configurar `clock rate` en el lado DCE.
 
 ### `pt_delete_device`
 
@@ -177,7 +181,7 @@ Esta referencia cubre las 57 herramientas originales. Las 12 añadidas se docume
 **Parámetros:**
 - `name` (string, requerido) — nombre exacto a eliminar.
 
-**Notas:** Tras `removeDevice`, vuelve a listar para confirmar. Limpia las entradas asociadas en `linkRegistry`.
+**Notas:** Tras `removeDevice`, vuelve a listar para confirmar.
 
 ### `pt_delete_link`
 
@@ -187,7 +191,7 @@ Esta referencia cubre las 57 herramientas originales. Las 12 añadidas se docume
 - `device` (string, requerido) — uno de los dos extremos del cable.
 - `port` (string, requerido) — puerto de ese dispositivo cuyo cable hay que cortar.
 
-**Notas:** Cualquiera de los dos extremos sirve, PT localiza el cable a partir de uno solo. Limpia la pareja correspondiente en `linkRegistry`.
+**Notas:** Cualquiera de los dos extremos sirve, PT localiza el cable a partir de uno solo.
 
 ### `pt_move_device`
 
@@ -217,7 +221,7 @@ Esta referencia cubre las 57 herramientas originales. Las 12 añadidas se docume
 - `old_name` (string, requerido) — nombre actual.
 - `new_name` (string, requerido) — nombre nuevo deseado.
 
-**Notas:** Mantiene el `linkRegistry` actualizado. Si `old_name === new_name` devuelve sin tocar nada.
+**Notas:** Si `old_name === new_name` devuelve sin tocar nada.
 
 ### `pt_set_pc`
 
@@ -631,3 +635,23 @@ Esta referencia cubre las 57 herramientas originales. Las 12 añadidas se docume
 - `timeout_ms` (int, opcional) — timeout en ms (máx. 60000).
 
 **Notas:** Cuando exista una tool tipada que cubra el caso, preferirla a `pt_send_raw`. Etiqueta cada llamada con un fragmento del código para facilitar el debug en logs.
+
+## Herramientas de 0.1.2
+
+| Herramienta | Uso |
+|---|---|
+| `pt_server_web` | Lee o cambia el estado de HTTP y TFTP en Server-PT. `page` acepta `path` y `content` para publicar HTML y verificar la lectura. TFTP controla el servicio. |
+| `pt_verify_http` | Solicita una página desde un equipo simulado. Indica `client`, `server`, `path` y un marcador `expected` que el cliente todavía no tenga en la última respuesta. El destino se obtiene del Server-PT en el canvas. |
+| `pt_verify_routing` | Lee vecinos BGP/OSPF IPv4 u OSPFv3 y rutas instaladas de un `router`. `expected_neighbors`, `expected_prefixes` y `ping` permiten comprobar el estado antes y después de un fallo controlado en el laboratorio. Para `ospfv3`, indica IPv6 en prefijos y ping y usa los router IDs de los vecinos. |
+| `pt_simulation_events` | Devuelve los últimos eventos de la simulación, con origen, destino, dispositivo y si se descartó el paquete. Con `details: true` añade los puertos y las decisiones que expone el motor. |
+| `pt_select_simulation_scenario` | Solicita un índice conocido. El motor no expone un listado ni la selección actual, así que la respuesta indica `verified: false`. |
+| `pt_physical_inventory` | Devuelve el árbol físico con identificadores de fila, padre, tipo, nombre físico y nombre lógico del dispositivo. `limit` acota la lectura. |
+| `pt_verify_lab` | Ejecuta entre 1 y 12 comprobaciones `ping`, `dns`, `http` o `routing`. Devuelve un resultado por comprobación y continúa después de un fallo. Con `reachable: false` exige que el ping termine con cero respuestas. Para HTTP, usa un marcador que el cliente aún no haya recibido. |
+| `pt_diagnose_l2` | Consulta los enlaces del lienzo, la raíz y los puertos STP, las MAC aprendidas y la salida de trunks para una VLAN en hasta ocho switches. Cada resultado indica si se completaron las consultas. |
+| `pt_verify_failover` | Comprueba el ping inicial, deshabilita temporalmente una interfaz física de router que esté activa y mide la recuperación observada. Exige `confirm: true` y una fuente distinta del router probado. La opción `route` comprueba el prefijo y los siguientes saltos primario y alternativo en otro router. Finalmente restaura la interfaz y verifica que vuelva a estar activa. |
+| `pt_read_activity` | Lee las instrucciones visibles y los contadores de progreso de una actividad `.pka` abierta. Omite `page` para leer la instrucción actual o indica un número de página a partir de 1. |
+| `pt_read_syslog` | Lee eventos recibidos en un Server-PT. Devuelve fecha, IP de origen, prioridad y mensaje. `limit` acota la lectura. |
+| `pt_verify_ntp` | Comprueba si un router está sincronizado. Lee las asociaciones y permite exigir un `expected_server` IPv4. |
+| `pt_verify_ftp` | Comprueba desde un PC-PT que un Server-PT responde con el saludo FTP `220`. Cierra la sesión al llegar al diálogo de acceso y verifica que se restauró el prompt. |
+| `pt_read_discovery` | Lee vecinos CDP o LLDP, puertos locales y remotos, y temporizador de cada entrada. Devuelve el texto de IOS junto con los campos extraídos. |
+| `pt_read_plc_io` | Lee el nombre, dirección y valor observado de las ranuras digitales y analógicas que expone un PLC-PT. |

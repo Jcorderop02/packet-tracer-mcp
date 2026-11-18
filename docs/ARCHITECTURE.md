@@ -11,12 +11,12 @@ operaciones a partir del snapshot que acaba de capturar.
 
 ```mermaid
 flowchart TD
-    Client(["Cliente MCP<br/>Claude Code · Cursor · VS Code"])
+    Client(["Cliente MCP<br/>Codex · Claude Code · Gemini CLI<br/>VS Code con GitHub Copilot · Cursor · Devin Local · Cline"])
 
     subgraph Server["packet-tracer-mcp · Bun + TypeScript"]
         direction TB
-        Transport["Transporte MCP<br/>HTTP /mcp · streamable"]
-        Tools["Capa de tools<br/>69 tools · src/tools/"]
+        Transport["Transporte MCP<br/>Streamable HTTP /mcp · stdio"]
+        Tools["Herramientas MCP<br/>84 registradas · src/tools/"]
 
         subgraph Domain["Dominio"]
             direction LR
@@ -31,7 +31,7 @@ flowchart TD
 
     subgraph PT["Cisco Packet Tracer 9.0"]
         direction TB
-        Webview["Webview<br/>bootstrap .pts inyecta setInterval"]
+        Webview["Webview<br/>extensión .pts · cliente XHR"]
         Engine["Script Engine<br/>árbol ipc.* · sin red"]
     end
 
@@ -44,7 +44,7 @@ flowchart TD
     Canvas --> IPC
     Canvas -. "guarda / carga" .-> Persistence
     IPC --> Bridge
-    Bridge -- "XHR cada 500 ms" --> Webview
+    Bridge -- "entrega al llegar a la cola" --> Webview
     Webview -- "runCode" --> Engine
 
     classDef external fill:#2563eb,stroke:#1e3a8a,color:#ffffff,stroke-width:2px
@@ -68,59 +68,76 @@ flowchart TD
 > dentro de Packet Tracer. Todo lo verde y todo lo rojo se queda en tu
 > máquina; nada sale a Cisco.
 
+Codex, Claude Code, Gemini CLI, VS Code con GitHub Copilot, Cursor,
+Devin Local y Cline pueden funcionar como clientes MCP. Para acceder al
+endpoint `127.0.0.1`, el cliente debe ejecutarse en la misma máquina
+que el servidor. En Devin Desktop, elige una sesión de Devin Local para
+usar ese endpoint.
+
+Consulta la documentación de [VS Code](https://code.visualstudio.com/docs/agent-customization/mcp-servers),
+[Cursor](https://cursor.com/docs/mcp),
+[Devin](https://docs.devin.ai/desktop/devin-local/customizations)
+y [Cline](https://docs.cline.bot/mcp/mcp-overview).
+
 Persistencia (`src/persistence/`) vive al lado de la capa canvas:
 guarda *snapshots* en disco, nunca planes, así que recargar un proyecto
 significa diffear la verdad de ayer contra la de hoy. Los archivos
 binarios `.pkt` nativos de PT se manejan aparte vía `src/ipc/files.ts`.
 
-## Tools MCP (69 en `src/tools/`)
+## Herramientas MCP
 
-Cada tool es un módulo independiente con su propio esquema de entrada,
-su builder JS y su decoder. Agruparlas por dominio:
+Las 84 herramientas se registran desde `src/tools/index.ts`. El servidor
+valida la entrada de cada herramienta. Las operaciones sobre el lienzo
+usan el bridge para leer o modificar Packet Tracer.
 
-- **Bridge / lifecycle**: `pt_bridge_status`, `pt_ping`,
-  `pt_clear_canvas`.
-- **Pre-flight planning**: `pt_plan_review` (revisión obligatoria
+- **Bridge y ciclo de vida** — `pt_bridge_status`, `pt_clear_canvas`.
+- **Pre-flight planning** — `pt_plan_review` (revisión obligatoria
   antes de escribir sobre topologías de ≥3 routers).
-- **Catálogo y descubrimiento**: `pt_list_devices`, `pt_list_modules`
+- **Catálogo y descubrimiento** — `pt_list_devices`, `pt_list_modules`
   (modo catálogo y modo per-device), `pt_list_recipes`,
   `pt_get_device_details`.
-- **Edición primitiva del canvas**: `pt_add_device`, `pt_add_module`,
+- **Edición primitiva del canvas** — `pt_add_device`, `pt_add_module`,
   `pt_create_link`, `pt_delete_device`, `pt_delete_link`,
   `pt_rename_device`, `pt_move_device`, `pt_auto_layout`, `pt_set_pc`,
   `pt_set_device_power`, `pt_add_canvas_annotation`,
   `pt_manage_clusters`, `pt_send_raw`.
-- **Inspección read-only del canvas**: `pt_inspect_canvas`,
+- **Inspección read-only del canvas** — `pt_inspect_canvas`,
   `pt_explain_canvas`, `pt_query_topology`, `pt_inspect_ports`,
   `pt_read_vlans`, `pt_read_acl`, `pt_show_bgp_routes`,
-  `pt_read_project_metadata`.
-- **Snapshots y reparación**: `pt_save_snapshot`, `pt_load_snapshot`,
+  `pt_read_project_metadata`, `pt_read_activity`, `pt_physical_inventory`,
+  `pt_diagnose_l2`, `pt_read_discovery`, `pt_read_plc_io`.
+- **Snapshots y reparación** — `pt_save_snapshot`, `pt_load_snapshot`,
   `pt_list_snapshots`, `pt_diff_snapshots`, `pt_mend_canvas`.
-- **CLI**: `pt_run_cli`, `pt_run_cli_bulk`, `pt_show_running`.
-- **Recetas y orquestación**: `pt_cook_topology`, `pt_forecast`,
+- **CLI** — `pt_run_cli`, `pt_run_cli_bulk`, `pt_show_running`.
+- **Recetas y orquestación** — `pt_cook_topology`, `pt_forecast`,
   `pt_generate_configs` (synthesis offline sin tocar PT).
-- **Aplicadores especializados**: `pt_apply_switching`,
+- **Aplicadores especializados** — `pt_apply_switching`,
   `pt_apply_services`, `pt_configure_server_dhcp`,
   `pt_configure_subinterface`, `pt_apply_advanced_routing`,
   `pt_apply_ipv6`, `pt_apply_voip`, `pt_apply_wireless`.
-- **Persistencia .pkt nativa**: `pt_save_pkt`, `pt_open_pkt`,
+- **Persistencia .pkt nativa** — `pt_save_pkt`, `pt_open_pkt`,
   `pt_save_pkt_to_bytes`, `pt_open_pkt_from_bytes`.
-- **Simulación y operaciones**: `pt_simulation_mode`,
+- **Simulación y operaciones** — `pt_simulation_mode`,
   `pt_simulation_play`, `pt_send_pdu`, `pt_ping`, `pt_traceroute`,
-  `pt_screenshot`.
-
-- **Endpoints/WRT/DNS/WiFi**: `pt_read_endpoint`,
+  `pt_screenshot`, `pt_simulation_events`, `pt_select_simulation_scenario`.
+- **Endpoints/WRT/DNS/WiFi** — `pt_read_endpoint`,
   `pt_configure_wireless_router`, `pt_read_wireless_router`, `pt_configure_dns`,
   `pt_read_dns`, `pt_verify_dns`, `pt_read_server_dhcp`,
   `pt_install_wireless_adapter`, `pt_read_wireless_client`,
   `pt_associate_default_wireless`.
-- **Checkpoints confirmados**: `pt_checkpoint_pkt`, `pt_latest_checkpoint`.
+- **Checkpoints confirmados** — `pt_checkpoint_pkt`, `pt_latest_checkpoint`.
+- **Servicios de Server-PT** — `pt_server_web`, `pt_verify_http`,
+  `pt_read_syslog`, `pt_verify_ftp`, `pt_verify_ntp`.
+- **Verificación de laboratorios** — `pt_verify_lab`, `pt_verify_routing`,
+  `pt_verify_failover`.
 
-Las nuevas tools exportan `InputSchema`, `buildJs` y `decodeReply`, con tests
-independientes en `tests/tools/`. La CLI comparte un runner serializado por
-dispositivo; usa offsets de salida, paginación y espera de finalización. El
-bridge correlaciona respuestas por identificador, descarta resultados tardíos
-y transporta Unicode en un envelope JSON ASCII compatible con la extensión.
+La CLI ejecuta los comandos en orden por dispositivo, agrupa los que
+terminan de inmediato y espera por los pendientes. El bridge correlaciona
+respuestas por identificador y descarta resultados tardíos.
+
+Consulta la [referencia de herramientas](TOOLS.md) para ver los parámetros,
+incluidas las [incorporaciones de 0.1.2](TOOLS.md#herramientas-de-012).
+
 Los checkpoints registran archivos estables y SHA-256; verificar persistencia
 reemplaza explícitamente el lienzo sólo después de confirmar una copia.
 

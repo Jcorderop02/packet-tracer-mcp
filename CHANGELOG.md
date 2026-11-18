@@ -15,14 +15,41 @@ y el versionado sigue [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Cambios en `main` que aún no han salido en una release etiquetada.
+## [0.1.2] — 2026-11-18
+
+### Changed
+
+- The same four labs on Packet Tracer 9.0.1.0858 went from 550.5 s to
+  235.2 s with 500 ms polling (57% less time) and to 188.6 s with
+  continuous polling (66% less time). Compared with the first 0.1.2
+  measurement of 422.0 s, the reductions were 44% and 55%, respectively.
+  See [timings by lab](https://github.com/Jcorderop02/packet-tracer-mcp/blob/v0.1.2/docs/COVERAGE.md#rendimiento-de-012-en-9010858).
+- Deliver queued commands as soon as the bridge has a waiting webview request.
+- Batch synchronous CLI commands and keep error detection, pagination and
+  polling for incomplete commands. Preserve fresh output when the
+  simulated terminal trims its console buffer.
+- Check IOS boot prompts together and batch endpoint IP configuration with
+  per-device readback.
+- Discover native cable endpoints after reopening a `.pkt` and verify all recipe
+  links with one snapshot per poll.
+- Verify the Wi-Fi recipe with the open `Default` profile, WPC300N and DHCP.
 
 ### Added
 
+- Received Syslog events, NTP synchronization checks, simulated FTP
+  greeting checks, CDP/LLDP discovery, OSPFv3 route verification, and
+  PLC-PT I/O readback.
+- Lab verification matrices, Layer 2 diagnostics, reversible failover
+  checks, activity instruction and progress readback, and packet event details.
+- Server-PT HTTP/TFTP controls, simulated HTTP verification, IPv4 routing
+  diagnostics, physical inventory and simulation event inspection.
+- WLC-2504, WLC-3504, WLC-PT, 3702i, LAP-PT, PLC-PT and HMI-PT
+  placement and port inventory. The device catalog can also query the live
+  Packet Tracer palette and identify lightweight APs by their radio MAC.
 - Twelve tools for endpoint inspection, WRT, DNS, DHCP readback, limited
   Wi-Fi association and numbered `.pkt` checkpoints.
 - A synthetic integration fixture for Packet Tracer 9.0.1.0858. See
-  [validation scope](docs/integration/validacion.md).
+  [validation scope](https://github.com/Jcorderop02/packet-tracer-mcp/blob/v0.1.2/docs/integration/validacion.md).
 
 ### Fixed
 
@@ -39,18 +66,27 @@ Cambios en `main` que aún no han salido en una release etiquetada.
   Report the package version in the MCP handshake.
 - Sign local macOS executable builds so they run on Apple Silicon.
 
-### Changed
+### Breaking changes
 
-- **Breaking:** `pt_run_cli`/`pt_run_cli_bulk` now return per-command JSON
+- `pt_run_cli`/`pt_run_cli_bulk` now return per-command JSON
   with errors/timeouts; bulk stops at the first failure. Include `enable`
   explicitly or use `mode` on the single-command tool.
-- **Breaking:** `pt_set_pc` returns observed interfaces and rejects static
+- `pt_set_pc` returns observed interfaces and rejects static
   fields in DHCP mode; its omitted DHCP port is auto-selected.
-- **Breaking:** deleting `serverPool` is rejected because PT may recreate
+- deleting `serverPool` is rejected because PT may recreate
   an overlapping pool on reload. Update its range instead.
-- **Breaking:** partial/DNS-failed ping results now set `isError` instead
+- partial/DNS-failed ping results now set `isError` instead
   of presenting partial output as completed success. Cascaded layouts change
   category-only row positions to preserve parent depth.
+
+
+### Known limitations
+
+- WLC-2504 and lightweight AP placement and client radio associations
+  were checked in Packet Tracer 9.0.1.0858. The Script Engine does not
+  expose a verified controller-side AP registration lookup.
+- Simulation can request a known scenario index. The Script Engine
+  does not confirm the active scenario or enumerate the selector.
 
 
 ---
@@ -132,5 +168,6 @@ Primera release pública. Proyecto experimental verificado contra
 
 ---
 
-[Unreleased]: https://github.com/jcorderop02/packet-tracer-mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Jcorderop02/packet-tracer-mcp/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/Jcorderop02/packet-tracer-mcp/compare/v0.1.1...v0.1.2
 [0.1.0]: https://github.com/jcorderop02/packet-tracer-mcp/releases/tag/v0.1.0

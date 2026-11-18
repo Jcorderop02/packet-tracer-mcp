@@ -164,31 +164,23 @@ permitiendo tráfico LAN al ISP, ruta default por el ISP. Si
 
 ## wifi_lan
 
-> Router + AccessPoint-PT + clientes Laptop-PT inalámbricos con SSID/WPA2 y DHCP.
+> Router con DHCP, un AccessPoint-PT-N y portátiles Laptop-PT.
 
-**Parámetros:**
-- `clients` (int, requerido, 1..12).
-- `ssid` (string, opcional).
-- `security` (`open|wpa2-psk`, opcional, default `wpa2-psk`).
-- `psk` (string, opcional).
-- `channel` (int, opcional, 1..11).
-- `routerModel`, `apModel`, `clientModel` (string, opcional).
-- `lanPool` (string, opcional).
-
-**Ejemplo:**
+- `clients` (requerido, 1..12).
+- `channel` (opcional, 1..11), `lanPool` (opcional).
+- `routerModel`, `apModel`, `clientModel` permiten cambiar modelos donde
+  el equipo siga exponiendo los puertos y procesos necesarios.
 
 ```json
-{ "recipe": "wifi_lan", "clients": 3, "ssid": "Lab", "security": "wpa2-psk", "psk": "cisco12345" }
+{ "recipe": "wifi_lan", "params": { "clients": 1 } }
 ```
 
-**Resultado esperado:** Router con DHCP en la LAN cableada hacia el AP.
-AP con SSID configurado. Clientes Laptop-PT con módulo wireless.
-
-> [!WARNING]
-> En PT 9 los clientes Laptop-PT raramente se asocian solos al AP por
-> simulador (problema conocido en su radio JS API). El SSID/PSK quedan
-> persistidos en el cliente, pero la asociación necesita intervención
-> manual en muchos escenarios. Es una limitación de PT, no del MCP.
+La ejecución en vivo acepta el perfil abierto `Default`. En un portátil
+nuevo instala WPC300N, confirma por MAC la asociación al AP de la receta y
+espera una dirección DHCP. En portátiles ya presentes, instala el adaptador
+explícitamente con `pt_install_wireless_adapter`. Los SSID arbitrarios y
+WPA2 se pueden describir en el plan y sus ajustes de AP se pueden aplicar
+por separado. Su asociación cliente aún requiere la interfaz de Packet Tracer.
 
 ---
 

@@ -64,23 +64,14 @@ construir una alternativa. **No es necesaria para usar el MCP.**
 
 ### Cómo funciona el polling por dentro
 
-La extensión inyecta este snippet al cargar `interface/index.html`:
+La extensión incluida consulta `GET /next` cada 500 ms. Cuando la
+cola está vacía, el servidor deja una petición abierta hasta 450 ms y
+responde en cuanto llega trabajo. La ventana ejecuta el contenido con
+`$se('runCode', ...)` dentro del Script Engine.
 
-```javascript
-/* packet-tracer-mcp bridge */ window.webview.evaluateJavaScriptAsync("setInterval(function(){var x=new XMLHttpRequest();x.open('GET','http://127.0.0.1:54321/next',true);x.onload=function(){if(x.status===200&&x.responseText){$se('runCode',x.responseText)}};x.onerror=function(){};x.send()},500)");
-```
-
-| Fragmento                                  | Por qué está ahí                                  |
-|--------------------------------------------|---------------------------------------------------|
-| `window.webview.evaluateJavaScriptAsync`   | Salta del editor a la página que lo aloja — solo ese scope expone `XMLHttpRequest`. |
-| `setInterval(..., 500)`                    | Cadencia del polling. 500 ms es la cota inferior donde ráfagas de `addDevice` siguen renderizando. |
-| `XMLHttpRequest` a `/next`                 | Recoge la siguiente expresión JS encolada por el bridge. |
-| `$se('runCode', x.responseText)`           | Ejecuta la expresión *dentro* del Script Engine, donde vive `ipc.*`. |
-| `x.onerror = function(){}`                 | Traga errores transitorios para que el bucle sobreviva si PT pasa a segundo plano. |
-
-PT 9 estándar **no** trae un editor con `window.webview` accesible al
-que pegar este snippet a mano: la única forma de ejecutarlo es desde
-una extensión instalada (la nuestra u otra con UI propia).
+Para otra extensión con webview, `pt_bridge_status` devuelve un snippet
+que mantiene una sola petición abierta y vuelve a consultar al recibir la
+respuesta. Ante un fallo de red, espera 500 ms antes de reintentar.
 
 ## Lo que el bridge NO hace
 
