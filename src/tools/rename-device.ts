@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { linkRegistry } from "../canvas/link-registry.js";
 import { renameDeviceJs } from "../ipc/generator.js";
 import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
 import { checkPtReply } from "./pt-errors.js";
@@ -25,7 +24,6 @@ export const registerRenameDeviceTool: ToolModule = ({ bridge, server }) => {
       const err = checkPtReply(result, { device: old_name });
       if (err) return err;
       if (result !== "OK") return errorResult(`Unexpected reply: ${result}`);
-      linkRegistry.renameDevice(old_name, new_name);
       return textResult(`Renamed '${old_name}' -> '${new_name}'.`);
     },
   );

@@ -6,10 +6,10 @@ describe("parseSnapshotDump", () => {
     const raw = [
       "DEV|R1|2911|Router|100|200|1",
       "PORT|G0/0|10.0.0.1|255.255.255.252|1",
-      "LINK|G0/0|R2|G0/1",
+      "LINKPAIR|R1|G0/0|R2|G0/1",
       "DEV|R2|2911|Router|300|200|1",
       "PORT|G0/1|10.0.0.2|255.255.255.252|1",
-      "LINK|G0/1|R1|G0/0",
+      "LINKPAIR|R2|G0/1|R1|G0/0",
     ].join("\n");
 
     const snap = parseSnapshotDump(raw);
@@ -28,14 +28,14 @@ describe("parseSnapshotDump", () => {
     });
   });
 
-  test("deduplicates the LINK rows that PT emits from both endpoints", () => {
+  test("deduplicates the LINKPAIR rows that PT emits from both endpoints", () => {
     const raw = [
       "DEV|A|m|Router|0|0|1",
       "PORT|p1||| 0".replace(" 0", "0"),
-      "LINK|p1|B|q1",
+      "LINKPAIR|A|p1|B|q1",
       "DEV|B|m|Router|0|0|1",
       "PORT|q1|||0",
-      "LINK|q1|A|p1",
+      "LINKPAIR|B|q1|A|p1",
     ].join("\n");
     const snap = parseSnapshotDump(raw);
     expect(snap.links).toHaveLength(1);
@@ -57,11 +57,10 @@ describe("parseSnapshotDump", () => {
     expect(snap.devices[0]?.powered).toBe(false);
   });
 
-  test("LINK rows with empty other side are skipped (unresolved)", () => {
+  test("linked ports can exist without an observable peer", () => {
     const raw = [
       "DEV|R1|2911|Router|0|0|1",
       "PORT|G0/0|||1",
-      "LINK|G0/0||",
     ].join("\n");
     expect(parseSnapshotDump(raw).links).toHaveLength(0);
   });

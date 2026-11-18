@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { linkRegistry } from "../canvas/link-registry.js";
 import { deleteLinkJs } from "../ipc/generator.js";
 import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
 import { checkPtReply } from "./pt-errors.js";
@@ -28,16 +27,6 @@ export const registerDeleteLinkTool: ToolModule = ({ bridge, server }) => {
       const err = checkPtReply(result, { device, port });
       if (err) return err;
       if (result === "true" || result === "OK" || result === "undefined") {
-        // Drop the matching entry from the local registry. We only know
-        // one endpoint, so iterate and remove any link that touches
-        // (device, port). Ver canvas/link-registry.ts para el contexto.
-        for (const link of linkRegistry.all()) {
-          const matchesA = link.aDevice === device && link.aPort === port;
-          const matchesB = link.bDevice === device && link.bPort === port;
-          if (matchesA || matchesB) {
-            linkRegistry.unregister(link.aDevice, link.aPort, link.bDevice, link.bPort);
-          }
-        }
         return textResult(`Removed link on ${device}:${port}.`);
       }
       if (result === "false") {

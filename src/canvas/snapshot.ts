@@ -6,10 +6,10 @@
  * Format (UTF-8, lines separated by \n, fields separated by |):
  *   DEV|name|model|className|x|y|powered
  *   PORT|name|ip|mask|connected
- *   LINK|portName|otherDevice|otherPort
+ *   LINKPAIR|deviceA|portA|deviceB|portB
  *
- * DEV always introduces a new device; the PORT/LINK lines that follow attach
- * to it until the next DEV. We deliberately do not use JSON: PT's Script
+ * DEV always introduces a new device; PORT lines that follow attach to it until the next DEV. LINKPAIR records
+ * identify both endpoints independently. We deliberately do not use JSON: PT's Script
  * Engine is more reliable on plain string concatenation, and recovery from
  * truncated payloads is easier.
  */
@@ -17,7 +17,6 @@
 import { resolveModel } from "../catalog/devices.js";
 import type { Bridge } from "../bridge/http-bridge.js";
 import { withLabel } from "../ipc/label.js";
-import { linkRegistry } from "./link-registry.js";
 import {
   type CanvasSnapshot,
   type DeviceObservation,
@@ -29,25 +28,6 @@ import {
 const LW = "ipc.appWindow().getActiveWorkspace().getLogicalWorkspace()";
 const NET = "ipc.network()";
 
-/**
- * Cómo se construyen los enlaces en el snapshot:
- *
- * El JS emite DEV / PORT y LINKPAIR WiFi observado por MAC y enlace. NO intenta resolver
- * los endpoints del Link desde la API JS de PT 9 — está roto: el objeto
- * Link es opaco (`getDeviceA/B`, `getPortA/B`, `getEndpointA/B`,
- * `getOtherEnd`, `getId`, `toString` lanzan TypeError o devuelven null) y
- * `port.getConnectedPort()` ni siquiera existe. Verificado empíricamente
- * 2026-05-01 con `scripts/probe-link-api.ts`.
- *
- * En su lugar, las parejas de cable las aporta `linkRegistry` (estado
- * mantenido en proceso por `pt_create_link` / `pt_delete_link` /
- * `pt_delete_device`). `captureSnapshot` mergea ambas fuentes: PT da
- * dispositivos+puertos+coordenadas, el registry da los enlaces.
- *
- * Limitación conocida: si el usuario carga un .pkt existente con
- * `pt_load_project` el registry está vacío y los cables del fichero no
- * aparecen como `links`. Documentado en `canvas/link-registry.ts`.
- */
 export function snapshotCanvasJs(): string {
   return withLabel(
     "Snapshot del canvas (dispositivos + enlaces + posiciones)",
@@ -55,7 +35,7 @@ export function snapshotCanvasJs(): string {
       `var net=${NET};` +
       `void ${LW};` + // touch the logical workspace so PT activates it
       `var n=net.getDeviceCount();` +
-      `var out=[];` +
+      `var out=[],seen=Object.create(null);` +
       `for(var i=0;i<n;i++){` +
         `var d=net.getDeviceAt(i);` +
         `var m=d.getModel();` +
@@ -70,6 +50,14 @@ export function snapshotCanvasJs(): string {
           `try{mk=p.getSubnetMask()||"";}catch(e){}` +
           `var lnk=null;try{lnk=p.getLink();}catch(e){}` +
           `out.push("PORT|"+p.getName()+"|"+ip+"|"+mk+"|"+(lnk?"1":"0"));` +
+          `if(lnk){try{` +
+            `var id=String(lnk.getObjectUuid()||"");` +
+            `if(!id||!seen[id]){` +
+              `var a=lnk.getPort1(),b=lnk.getPort2();` +
+              `if(a&&b){out.push("LINKPAIR|"+a.getOwnerDevice().getName()+"|"+a.getName()+"|"+b.getOwnerDevice().getName()+"|"+b.getName());` +
+                `if(id)seen[id]=true;}` +
+            `}` +
+          `}catch(e){}}` +
         `}` +
       `}` +
       `var radios={};for(var a=0;a<n;a++){try{var ap=net.getDeviceAt(a),wr=ap.getProcess("WirelessServerProcess"),rp=wr.getPort();radios[String(rp.getMacAddress()).toLowerCase()]={device:ap.getName(),port:rp.getName()};}catch(e){}}` +
@@ -81,7 +69,7 @@ export function snapshotCanvasJs(): string {
 
 /**
  * Read the dump produced by snapshotCanvasJs and rebuild a typed snapshot.
- * Tolerates trailing blank lines but errors out on malformed DEV/PORT/LINK
+ * Tolerates trailing blank lines but errors out on malformed DEV/PORT/LINKPAIR
  * rows so misbehaviour from PT surfaces loudly instead of being papered over.
  */
 export function parseSnapshotDump(raw: string): CanvasSnapshot {
@@ -153,26 +141,6 @@ export function parseSnapshotDump(raw: string): CanvasSnapshot {
       continue;
     }
 
-    // LINK supports legacy probes; LINKPAIR includes observed WiFi links.
-    // Wired links still come from the in-memory registry.
-    if (tag === "LINK") {
-      if (!current) throw new Error(`LINK row without enclosing DEV: ${line}`);
-      const [, pname, otherDev, otherPort] = parts;
-      if (!pname || otherDev === undefined || otherPort === undefined) {
-        throw new Error(`malformed LINK row: ${line}`);
-      }
-      if (otherDev === "" || otherPort === "") continue;
-      const obs: LinkObservation = {
-        aDevice: current.name,
-        aPort: pname,
-        bDevice: otherDev,
-        bPort: otherPort,
-      };
-      const key = linkKey(obs);
-      if (!linkSet.has(key)) linkSet.set(key, obs);
-      continue;
-    }
-
     if (tag === "LINKPAIR") {
       const [, aDevice, aPort, bDevice, bPort] = parts;
       if (!aDevice || !aPort || !bDevice || !bPort) {
@@ -200,17 +168,6 @@ export interface CaptureOptions {
   readonly timeoutMs?: number;
 }
 
-/**
- * Roundtrip the bridge once and merge the result with the in-process link
- * registry. PT 9's JS Link API is opaque (verified via probe-link-api.ts),
- * so live cables are tracked stateful by `linkRegistry` — see
- * `canvas/link-registry.ts` for the full rationale.
- *
- * Merge policy: any link the JS script managed to resolve (via DEV/LINK
- * rows, e.g. on a hypothetical future PT release that restores the API)
- * survives; the registry adds anything else it knows about. Both sides
- * share the same `linkKey` dedupe so duplicates collapse.
- */
 export async function captureSnapshot(
   bridge: Bridge,
   opts: CaptureOptions = {},
@@ -220,21 +177,7 @@ export async function captureSnapshot(
   });
   if (raw === null) throw new Error("snapshot timed out — is the PT bridge polling?");
   if (raw.startsWith("ERROR:")) throw new Error(`PT raised during snapshot: ${raw}`);
-  const parsed = parseSnapshotDump(raw);
-  const known = new Set(parsed.links.map(linkKey));
-  const merged = [...parsed.links];
-  const deviceNames = new Set(parsed.devices.map(d => d.name));
-  for (const obs of linkRegistry.all()) {
-    // Filter out links that reference devices PT no longer reports —
-    // typically because the user removed them through the GUI without
-    // going through pt_delete_device. Keeps the snapshot consistent
-    // with the actual canvas instead of phantom edges.
-    if (!deviceNames.has(obs.aDevice) || !deviceNames.has(obs.bDevice)) continue;
-    const key = linkKey(obs);
-    if (!known.has(key)) {
-      known.add(key);
-      merged.push(obs);
-    }
-  }
-  return { ...parsed, links: merged };
+  const snapshot = parseSnapshotDump(raw);
+  const names = new Set(snapshot.devices.map(device => device.name));
+  return { ...snapshot, links: snapshot.links.filter(link => names.has(link.aDevice) && names.has(link.bDevice)) };
 }

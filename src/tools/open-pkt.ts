@@ -5,14 +5,12 @@ import {
   fileExistsJs,
   fileNewJs,
   fileOpenJs,
-  getDeviceCountJs,
   getFileSizeJs,
 } from "../ipc/files.js";
-import { listDeviceNamesJs } from "../ipc/sim.js";
+import { captureSnapshot } from "../canvas/snapshot.js";
 import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
 import { checkPtReply } from "./pt-errors.js";
 import type { ToolModule } from "./types.js";
-import type { Bridge } from "../bridge/http-bridge.js";
 
 const InputSchema = {
   path: z.string().min(1).describe(
@@ -27,18 +25,6 @@ const InputSchema = {
 // not a stable magic and cannot be checked server-side. Validity is decided
 // by FileOpenReturnValue=0 from PT.
 const MIN_PKT_SIZE = 64;
-
-async function readDeviceCount(bridge: Bridge): Promise<number> {
-  const r = await bridge.sendAndWait(getDeviceCountJs(), { timeoutMs: 5_000 });
-  const n = parseInt((r ?? "").trim(), 10);
-  return Number.isNaN(n) ? -1 : n;
-}
-
-async function readDeviceNames(bridge: Bridge): Promise<string[]> {
-  const r = await bridge.sendAndWait(listDeviceNamesJs(), { timeoutMs: 5_000 });
-  if (!r || !r.startsWith("[")) return [];
-  try { return JSON.parse(r) as string[]; } catch { return []; }
-}
 
 export const registerOpenPktTool: ToolModule = ({ bridge, server }) => {
   server.tool(
@@ -72,8 +58,9 @@ export const registerOpenPktTool: ToolModule = ({ bridge, server }) => {
         return errorResult(`File at ${path} reports size=${sizeReply ?? "<null>"} via PT — too small to be a real .pkt (min ${MIN_PKT_SIZE} bytes).`);
       }
 
-      const beforeCount = await readDeviceCount(bridge);
-      const beforeNames = beforeCount > 0 ? await readDeviceNames(bridge) : [];
+
+      const beforeNames = (await captureSnapshot(bridge)).devices.map(device => device.name);
+      const beforeCount = beforeNames.length;
 
       if (replace) {
         const newReply = await bridge.sendAndWait(fileNewJs(false), { timeoutMs: 10_000 });
@@ -101,13 +88,14 @@ export const registerOpenPktTool: ToolModule = ({ bridge, server }) => {
         return errorResult(`fileOpen returned non-zero FileOpenReturnValue: ${retValue}. PT refused to load the file.`);
       }
 
-      const afterCount = await readDeviceCount(bridge);
-      const afterNames = afterCount > 0 ? await readDeviceNames(bridge) : [];
-
+      const after = await captureSnapshot(bridge);
+      const afterNames = after.devices.map(device => device.name);
+      const afterCount = afterNames.length;
       const delta = afterCount - (replace ? 0 : beforeCount);
       const lines = [
         `Opened ${path} (${replace ? "replace" : "merge"} mode).`,
         `Devices before: ${beforeCount}, after: ${afterCount} (Δ=${delta >= 0 ? "+" : ""}${delta}).`,
+        `Observed links after opening: ${after.links.length}.`,
       ];
       if (replace && beforeNames.length > 0) {
         lines.push(`Cleared from canvas: ${beforeNames.slice(0, 25).join(", ")}${beforeNames.length > 25 ? ` (+${beforeNames.length - 25} more)` : ""}.`);

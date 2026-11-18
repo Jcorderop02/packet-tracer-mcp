@@ -40,6 +40,7 @@ export type DeviceCliMode = "ios" | "rommon" | "pnp";
 
 export interface DeviceModel {
   readonly ptType: string;
+  readonly nativePlacementType?: number;
   readonly category: DeviceCategory;
   readonly displayName: string;
   readonly ports: readonly PortSpec[];
@@ -235,6 +236,14 @@ const MODELS: DeviceModel[] = [
     { fullName: "Port 0", speed: "FastEthernet" }, { fullName: "Port 1", speed: "Wireless" },
   ] },
 
+  // Lightweight APs share the layout role but use a separate native placement type.
+  { ptType: "3702i", category: "accesspoint", nativePlacementType: 44, displayName: "Cisco Aironet 3702i", ports: [
+    gig("0"), { fullName: "Dot11Radio0", speed: "Wireless" },
+  ] },
+  { ptType: "LAP-PT", category: "accesspoint", nativePlacementType: 44, displayName: "Lightweight Access Point", ports: [
+    gig("0"), { fullName: "Dot11Radio0", speed: "Wireless" },
+  ] },
+
   // L1 / legacy networking. Hub/Bridge/Repeater are L1-L2 relays; cabling-wise
   // any port works the same. Linksys-WRT300N is the only consumer wireless
   // router (Internet WAN + 4× LAN + radio).
@@ -297,6 +306,13 @@ const MODELS: DeviceModel[] = [
     { fullName: "Wireless0/0", speed: "Wireless" },
   ] },
 
+  // Native model IDs and cableable ports verified on 9.0.1.0858.
+  { ptType: "WLC-2504", category: "wirelesscontroller", displayName: "Cisco WLC 2504", ports: ["1", "2", "3", "4"].map(gig) },
+  { ptType: "WLC-3504", category: "wirelesscontroller", displayName: "Cisco WLC 3504", ports: ["1", "2", "3", "4", "5"].map(gig) },
+  { ptType: "WLC-PT", category: "wirelesscontroller", displayName: "Packet Tracer wireless controller", ports: [gig("0")] },
+  { ptType: "PLC-PT", category: "plc", displayName: "Programmable logic controller", ports: [gig("0")] },
+  { ptType: "HMI-PT", category: "hmi", displayName: "Human-machine interface", ports: [gig("0")] },
+
   // 7960: typical IP phone passthrough. `Switch` is the LAN uplink to the
   // wiring closet, `PC` is the desktop port. `Vlan1` SVI filtered.
   { ptType: "7960",        category: "ipphone", displayName: "Cisco IP Phone 7960", ports: [
@@ -309,6 +325,10 @@ export const DEVICE_CATALOG: ReadonlyMap<string, DeviceModel> = new Map(
 );
 
 const ALIASES: Record<string, string> = {
+  "wlc": "WLC-PT",
+  "lap": "LAP-PT",
+  "plc": "PLC-PT",
+  "hmi": "HMI-PT",
   "router":  "2911",
   "r":       "2911",
   "switch":  "2960-24TT",

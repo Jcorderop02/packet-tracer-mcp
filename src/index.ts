@@ -76,8 +76,7 @@ async function main(): Promise<void> {
  * Polls the bridge status every 2s and logs only the edges:
  *   disconnected → connected  ("Extensión PT conectada")
  *   connected    → disconnected ("Extensión PT desconectada")
- * Polling itself stays silent — the PT webview hits /next every 500ms and
- * we don't want to spam stderr with one line per poll.
+ * Command requests update the bridge's last-seen time without logging.
  */
 function watchBridgeConnection(running: RunningServer, log: (msg: string) => void): NodeJS.Timeout {
   let wasConnected = false;

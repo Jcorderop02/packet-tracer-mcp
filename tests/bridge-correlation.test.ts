@@ -22,3 +22,26 @@ test("source spanning multiple wire chunks preserves Unicode", async () => {
   expect(await result).toBe(text);
   bridge.stop();
 });
+
+
+test("an open command request receives the next queued item, then FIFO resumes", async () => {
+  const bridge = new Bridge();
+  const poll = dequeue(bridge);
+  expect(await dequeue(bridge)).toBe("");
+  bridge.enqueue("first");
+  bridge.enqueue("second");
+  expect(await poll).toBe("first");
+  expect(await dequeue(bridge)).toBe("second");
+  bridge.stop();
+});
+
+test("aborting a command request leaves the next command available", async () => {
+  const bridge = new Bridge();
+  const abort = new AbortController();
+  const poll = wire(bridge).handle(new Request("http://localhost/next", { signal: abort.signal }));
+  abort.abort();
+  bridge.enqueue("next");
+  expect(await (await poll).text()).toBe("");
+  expect(await dequeue(bridge)).toBe("next");
+  bridge.stop();
+});

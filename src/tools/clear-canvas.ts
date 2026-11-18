@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { linkRegistry } from "../canvas/link-registry.js";
 import { clearCanvasJs, listDeviceNamesJs } from "../ipc/sim.js";
 import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
 import { checkPtReply } from "./pt-errors.js";
@@ -45,7 +44,6 @@ export const registerClearCanvasTool: ToolModule = ({ bridge, server }) => {
           (prompt_user ? "User likely cancelled the modal." : "PT refused the new-file action."),
         );
       }
-      linkRegistry.clear();
 
       const verifyRaw = await bridge.sendAndWait(listDeviceNamesJs(), { timeoutMs: 5_000 });
       let after: string[] = [];

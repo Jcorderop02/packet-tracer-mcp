@@ -4,7 +4,7 @@ type BunServer = ReturnType<typeof Bun.serve>;
 
 /**
  * Endpoints exposed on the bridge port.
- *   GET  /next     -> dequeue next JS command for the webview to run
+ *   GET  /next     -> wait briefly for the next JS command for the webview to run
  *   GET  /ping     -> "pong"
  *   GET  /status   -> { connected, port, queue, hasResult }
  *   GET  /result   -> long-poll for the next result hex-encoded by PT
@@ -56,6 +56,7 @@ const HEADERS_JSON = { "Content-Type": "application/json", ...CORS_HEADERS } as 
 export class Bridge {
   private readonly queue: string[] = [];
   private readonly resultWaiters: Array<(value: string | null) => void> = [];
+  private nextPoll: ((command: string) => void) | undefined;
   private bunServer: BunServer | null = null;
   private readonly pending = new Map<string, (value: string | null) => void>();
   private lastSeenAt: number | null = null;
@@ -72,6 +73,7 @@ export class Bridge {
   }
 
   stop(): void {
+    this.nextPoll?.("");
     this.bunServer?.stop(true);
     this.bunServer = null;
     this.flushWaiters(null);
@@ -93,7 +95,8 @@ export class Bridge {
   }
 
   enqueue(jsCommand: string): void {
-    this.queue.push(jsCommand);
+    if (this.nextPoll) this.nextPoll(jsCommand);
+    else this.queue.push(jsCommand);
   }
 
   /**
@@ -164,6 +167,25 @@ export class Bridge {
     }
   }
 
+  private nextCommand(signal: AbortSignal): string | Promise<string> {
+    if (signal.aborted || this.nextPoll) return "";
+    const command = this.queue.shift();
+    if (command !== undefined) return command;
+    return new Promise(resolve => {
+      const cancel = () => settle("");
+      const settle = (value: string) => {
+        clearTimeout(timer);
+        signal.removeEventListener("abort", cancel);
+        this.nextPoll = undefined;
+        resolve(value);
+      };
+      // Fit inside the bundled extension's 500 ms polling interval.
+      const timer = setTimeout(cancel, 450);
+      this.nextPoll = settle;
+      signal.addEventListener("abort", cancel, { once: true });
+    });
+  }
+
   private async handle(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const method = req.method.toUpperCase();
@@ -180,7 +202,7 @@ export class Bridge {
       return new Response(JSON.stringify(this.status()), { headers: HEADERS_JSON });
     }
     if (method === "GET" && url.pathname === "/next") {
-      const cmd = this.queue.shift() ?? "";
+      const cmd = await this.nextCommand(req.signal);
       return new Response(cmd, { headers: HEADERS_TEXT });
     }
     if (method === "POST" && url.pathname === "/queue") {

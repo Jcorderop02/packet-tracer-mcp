@@ -37,15 +37,15 @@ export function wifiLan(opts: WifiLanOptions): Blueprint {
   if (opts.clients < 1) throw new Error("wifi_lan needs at least 1 wireless client");
   if (opts.clients > 12) throw new Error("wifi_lan caps at 12 clients to keep the canvas readable");
 
-  const ssid = opts.ssid ?? "PT-WIFI";
+  const ssid = opts.ssid ?? "Default";
   if (!ssid.trim()) throw new Error("ssid cannot be empty");
-  const security = opts.security ?? "wpa2-psk";
-  const psk = opts.psk ?? (security === "wpa2-psk" ? "packettracer" : undefined);
+  const security = opts.security ?? "open";
+  const psk = opts.psk;
   if (security === "wpa2-psk" && !psk) throw new Error("wpa2-psk requires psk");
   if (security === "open" && psk) throw new Error("open wifi_lan cannot include psk");
 
   const routerModel = opts.routerModel ?? "1941";
-  const apModel = opts.apModel ?? "AccessPoint-PT";
+  const apModel = opts.apModel ?? "AccessPoint-PT-N";
   const clientModel = opts.clientModel ?? "Laptop-PT";
   const lanPool = opts.lanPool ?? DEFAULT_LAN_POOL;
   const lan = new SubnetIterator(lanPool, 24).next();

@@ -48,6 +48,9 @@ export const DEVICE_TYPE_ID = {
   // router separate from `wirelessrouter`/Linksys).
   firewall: 27,
   homerouter: 30,
+  wirelesscontroller: 41,
+  plc: 51,
+  hmi: 56,
 } as const satisfies Record<string, number>;
 
 export type DeviceCategory = keyof typeof DEVICE_TYPE_ID;

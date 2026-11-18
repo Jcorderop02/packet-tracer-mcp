@@ -2,17 +2,15 @@ import { z } from "zod";
 import {
   fileNewJs,
   fileOpenJs,
-  getDeviceCountJs,
   getFileSizeJs,
   getPtTempDirJs,
   removeFileJs,
   writeBinaryToFileJs,
 } from "../ipc/files.js";
-import { listDeviceNamesJs } from "../ipc/sim.js";
+import { captureSnapshot } from "../canvas/snapshot.js";
 import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
 import { checkPtReply } from "./pt-errors.js";
 import type { ToolModule } from "./types.js";
-import type { Bridge } from "../bridge/http-bridge.js";
 
 const InputSchema = {
   bytes_base64: z.string().min(8).describe(
@@ -32,18 +30,6 @@ function joinPath(dir: string, name: string): string {
   if (dir.endsWith("/") || dir.endsWith("\\")) return dir + name;
   if (dir.includes("\\") && !dir.includes("/")) return dir + "\\" + name;
   return dir + "/" + name;
-}
-
-async function readDeviceCount(bridge: Bridge): Promise<number> {
-  const r = await bridge.sendAndWait(getDeviceCountJs(), { timeoutMs: 5_000 });
-  const n = parseInt((r ?? "").trim(), 10);
-  return Number.isNaN(n) ? -1 : n;
-}
-
-async function readDeviceNames(bridge: Bridge): Promise<string[]> {
-  const r = await bridge.sendAndWait(listDeviceNamesJs(), { timeoutMs: 5_000 });
-  if (!r || !r.startsWith("[")) return [];
-  try { return JSON.parse(r) as string[]; } catch { return []; }
 }
 
 export const registerOpenPktFromBytesTool: ToolModule = ({ bridge, server }) => {
@@ -74,6 +60,9 @@ export const registerOpenPktFromBytesTool: ToolModule = ({ bridge, server }) => 
 
       // Re-encode to canonical base64 in case the caller's b64 had whitespace/padding quirks.
       const canonical = decoded.toString("base64");
+
+      const beforeNames = (await captureSnapshot(bridge)).devices.map(device => device.name);
+      const beforeCount = beforeNames.length;
 
       // 2) Pick a writable PT-side directory.
       const dirReply = await bridge.sendAndWait(getPtTempDirJs(), { timeoutMs: 5_000 });
@@ -109,8 +98,6 @@ export const registerOpenPktFromBytesTool: ToolModule = ({ bridge, server }) => 
       }
 
       // 4) Snapshot canvas before, optionally clear, then fileOpen.
-      const beforeCount = await readDeviceCount(bridge);
-      const beforeNames = beforeCount > 0 ? await readDeviceNames(bridge) : [];
 
       if (replace) {
         const newReply = await bridge.sendAndWait(fileNewJs(false), { timeoutMs: 10_000 });
@@ -142,17 +129,18 @@ export const registerOpenPktFromBytesTool: ToolModule = ({ bridge, server }) => 
         return errorResult(`fileOpen returned non-zero FileOpenReturnValue: ${retValue}.`);
       }
 
-      const afterCount = await readDeviceCount(bridge);
-      const afterNames = afterCount > 0 ? await readDeviceNames(bridge) : [];
-
       // 5) Cleanup the temp.
       const rmReply = await bridge.sendAndWait(removeFileJs(tempPath), { timeoutMs: 5_000 });
       const cleaned = (rmReply ?? "").trim() === "true";
 
+      const after = await captureSnapshot(bridge);
+      const afterNames = after.devices.map(device => device.name);
+      const afterCount = afterNames.length;
       const delta = afterCount - (replace ? 0 : beforeCount);
       const lines = [
         `Loaded ${decoded.length} bytes from base64 (${replace ? "replace" : "merge"} mode).`,
         `Devices before: ${beforeCount}, after: ${afterCount} (Δ=${delta >= 0 ? "+" : ""}${delta}).`,
+        `Observed links after opening: ${after.links.length}.`,
       ];
       if (replace && beforeNames.length > 0) {
         lines.push(`Cleared from canvas: ${beforeNames.slice(0, 25).join(", ")}${beforeNames.length > 25 ? ` (+${beforeNames.length - 25} more)` : ""}.`);

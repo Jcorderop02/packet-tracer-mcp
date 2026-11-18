@@ -75,9 +75,10 @@ function pickGatewayPort(dev: DeviceObservation, lan: LanIntent): string | null 
 export async function applyAddressing(
   bridge: Bridge,
   rawBlueprint: Blueprint,
+  observed?: CanvasSnapshot,
 ): Promise<AddressingReport> {
   const blueprint = withDefaults(rawBlueprint);
-  const snap = await captureSnapshot(bridge);
+  const snap = observed ?? await captureSnapshot(bridge);
 
   const transitIter = new SubnetIterator(blueprint.addressing.transitPool!, 30);
   const lanIter = new SubnetIterator(blueprint.addressing.lanPool!, 24);
@@ -151,6 +152,7 @@ export async function applyAddressing(
   }
 
   // 2) Allocate /24s for every LAN intent and configure gateway + endpoints.
+  const endpointCommands: { code: string; action: AddressingAction }[] = [];
   for (const lan of blueprint.lans) {
     const gw = snap.devices.find(d => d.name === lan.gatewayDevice);
     if (!gw) {
@@ -224,8 +226,10 @@ export async function applyAddressing(
         continue;
       }
       if (lan.dhcp) {
-        await sendRaw(bridge, setEndpointDhcpJs(ep.name));
-        actions.push({ device: ep.name, port: epPort.name, action: "endpoint-dhcp", detail: "DHCP" });
+        endpointCommands.push({
+          code: setEndpointDhcpJs(ep.name),
+          action: { device: ep.name, port: epPort.name, action: "endpoint-dhcp", detail: "DHCP" },
+        });
         continue;
       }
       const host = hosts[cursor];
@@ -234,22 +238,31 @@ export async function applyAddressing(
         continue;
       }
       cursor++;
-      await sendRaw(
-        bridge,
-        setEndpointStaticIpJs({
-          device: ep.name,
-          port: epPort.name,
-          ip: host,
-          mask,
-          gateway,
-        }),
-      );
-      actions.push({
-        device: ep.name,
-        port: epPort.name,
-        action: "endpoint-static",
-        detail: `${host}/${subnet.prefix} gw ${gateway}`,
+      endpointCommands.push({
+        code: setEndpointStaticIpJs({ device: ep.name, port: epPort.name, ip: host, mask, gateway }),
+        action: { device: ep.name, port: epPort.name, action: "endpoint-static", detail: `${host}/${subnet.prefix} gw ${gateway}` },
       });
+    }
+  }
+
+  for (let i = 0; i < endpointCommands.length; i += 8) {
+    const batch = endpointCommands.slice(i, i + 8);
+    const commands = batch.map(({ code }) =>
+      `reply=${code};rows.push(reply);if(/^(ERR|ERROR):/.test(reply))return JSON.stringify(rows);`);
+    const result = await bridge.sendAndWait(
+      `(function(){var rows=[],reply;${commands.join("")}return JSON.stringify(rows);})()`,
+      { timeoutMs: 10_000, label: "Configurando direcciones de equipos finales" },
+    );
+    if (result === null || /^(ERR|ERROR):/.test(result)) {
+      throw new Error(`Endpoint batch failed: ${result ?? "timeout; outcome unknown"}`);
+    }
+    const replies = JSON.parse(result) as string[];
+    for (const [index, { action }] of batch.entries()) {
+      const reply = replies[index];
+      if (!reply || !/^OK(?::|$)/.test(reply)) {
+        throw new Error(`Endpoint ${action.device} configuration failed: ${reply ?? "missing result"}`);
+      }
+      actions.push(action);
     }
   }
 
@@ -262,14 +275,6 @@ export async function applyAddressing(
 
 async function sendBulk(bridge: Bridge, device: string, cli: string): Promise<void> {
   await runCliScript(bridge, device, wrapInConfig(cli));
-}
-
-async function sendRaw(bridge: Bridge, js: string): Promise<void> {
-  const reply = await bridge.sendAndWait(js, { timeoutMs: 10_000 });
-  if (reply === null) throw new Error("endpoint command timed out");
-  if (reply.startsWith("ERROR:") || reply.startsWith("ERR:")) {
-    throw new Error(`endpoint command rejected: ${reply}`);
-  }
 }
 
 export function summarizeAddressing(r: AddressingReport): string {

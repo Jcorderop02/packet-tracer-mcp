@@ -8,7 +8,7 @@ describe("wifiLan recipe", () => {
   });
 
   test("builds router + AP + N wireless clients", () => {
-    const bp = wifiLan({ clients: 2, ssid: "LAB", psk: "secret123", channel: 6 });
+    const bp = wifiLan({ clients: 2, ssid: "LAB", security: "wpa2-psk", psk: "secret123", channel: 6 });
     expect(bp.devices.map(d => d.name)).toEqual(["WGW", "AP1", "WCLIENT1", "WCLIENT2"]);
     expect(bp.links).toEqual([
       {
@@ -22,7 +22,7 @@ describe("wifiLan recipe", () => {
   });
 
   test("configures router LAN DHCP and wireless intents", () => {
-    const bp = wifiLan({ clients: 2, ssid: "LAB", psk: "secret123" });
+    const bp = wifiLan({ clients: 2, ssid: "LAB", security: "wpa2-psk", psk: "secret123" });
     expect(bp.lans).toEqual([
       {
         gatewayDevice: "WGW",
@@ -56,4 +56,10 @@ describe("wifiLan recipe", () => {
       mask: "255.255.255.0",
     });
   });
+});
+
+test("wifi_lan defaults to the verified open Default profile", () => {
+  const plan = wifiLan({ clients: 1 });
+  expect(plan.wireless?.aps?.[0]).toMatchObject({ ssid: "Default", security: "open" });
+  expect(plan.wireless?.clients?.[0]).toMatchObject({ ssid: "Default", dhcp: true });
 });

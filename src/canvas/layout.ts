@@ -154,7 +154,7 @@ export function categoryRow(category: DeviceCategory): number {
   if (category === "router" || category === "wirelessrouter" || category === "homerouter" || category === "firewall") {
     return LAYOUT.Y_ROUTER;
   }
-  if (category === "accesspoint") return LAYOUT.Y_AP;
+  if (category === "accesspoint" || category === "wirelesscontroller") return LAYOUT.Y_AP;
   if (category === "switch" || category === "multilayerswitch" || category === "bridge" || category === "hub" || category === "repeater") {
     return LAYOUT.Y_SWITCH;
   }

@@ -16,18 +16,17 @@ import type { Bridge } from "../bridge/http-bridge.js";
 import { resolveModel } from "../catalog/devices.js";
 import { captureSnapshot } from "../canvas/snapshot.js";
 import {
+  type CanvasSnapshot,
   type LinkObservation,
   linkKey,
 } from "../canvas/types.js";
 import {
   addDeviceJs,
   createLinkJs,
-  linkUpStatusJs,
   saveRunningConfigJs,
 } from "../ipc/generator.js";
-import { linkRegistry } from "../canvas/link-registry.js";
 import { wrapInConfig } from "../ipc/cli-prologue.js";
-import { waitForCliReady } from "../ipc/cli-wait.js";
+import { waitForClisReady } from "../ipc/cli-wait.js";
 import {
   validateBlueprintReferences,
   withDefaults,
@@ -43,7 +42,7 @@ import { applyStaticRouting, type StaticRoutingReport } from "./routing/static.j
 import { applySwitching, type SwitchingReport } from "./switching/apply.js";
 import { applyServices, type ServicesReport } from "./services/apply.js";
 import type { ServicesIntent } from "./services/intents.js";
-import { applyWireless, type WirelessReport } from "./wireless/apply.js";
+import { applyWireless, validateWirelessAssociations, type WirelessReport } from "./wireless/apply.js";
 import type { WirelessIntent } from "./wireless/intents.js";
 import { applyVoip, type VoipReport } from "./voip/apply.js";
 import type { VoipIntent } from "./voip/intents.js";
@@ -84,6 +83,7 @@ export async function cookBlueprint(bridge: Bridge, raw: Blueprint): Promise<Coo
   const refs = validateBlueprintReferences(raw);
   if (refs.length > 0) throw new Error(`blueprint has invalid references:\n  - ${refs.join("\n  - ")}`);
   const blueprint = withDefaults(raw);
+  if (blueprint.wireless) validateWirelessAssociations(blueprint.wireless);
 
   let snap = await captureSnapshot(bridge);
   const placedDevices: string[] = [];
@@ -110,12 +110,12 @@ export async function cookBlueprint(bridge: Bridge, raw: Blueprint): Promise<Coo
     placedDevices.push(dev.name);
   }
 
-  for (const dev of blueprint.devices) {
-    const resolved = resolveModel(dev.model);
-    if (!resolved || (resolved.category !== "router" && resolved.category !== "switch")) continue;
-    if (!snap.devices.find(d => d.name === dev.name) && !placedDevices.includes(dev.name)) continue;
-    await waitForCliReady(bridge, dev.name);
-  }
+  const cliDevices = blueprint.devices.filter(dev => {
+    const category = resolveModel(dev.model)?.category;
+    return (category === "router" || category === "switch") &&
+      (placedDevices.includes(dev.name) || snap.devices.some(d => d.name === dev.name));
+  });
+  await waitForClisReady(bridge, cliDevices.map(dev => dev.name));
 
   // Refresh snapshot before wiring so the link-presence test is accurate.
   snap = await captureSnapshot(bridge);
@@ -154,17 +154,12 @@ export async function cookBlueprint(bridge: Bridge, raw: Blueprint): Promise<Coo
     if (reply.startsWith("ERR:") || reply.startsWith("ERROR:")) {
       throw new Error(`createLink for ${tag} failed: ${reply}`);
     }
-    // Mantener el registry coherente — la API de Link de PT 9 es opaca
-    // y captureSnapshot depende del registry para conocer las parejas.
-    // Ver canvas/link-registry.ts.
-    linkRegistry.register(lnk.aDevice, lnk.aPort, lnk.bDevice, lnk.bPort);
     placedLinks.push(tag);
     existingLinks.add(key);
   }
 
-  await waitForBlueprintLinks(bridge, blueprint.links);
-
-  const addressing = await applyAddressing(bridge, blueprint);
+  const wiredSnapshot = await waitForBlueprintLinks(bridge, blueprint.links);
+  const addressing = await applyAddressing(bridge, blueprint, wiredSnapshot);
 
   let routing: CookReport["routing"];
   switch (blueprint.routing) {
@@ -197,7 +192,7 @@ export async function cookBlueprint(bridge: Bridge, raw: Blueprint): Promise<Coo
 
   let wireless: WirelessReport | undefined;
   if (blueprint.wireless && hasAnyWirelessIntent(blueprint.wireless)) {
-    wireless = await applyWireless(bridge, blueprint.wireless);
+    wireless = await applyWireless(bridge, blueprint.wireless, placedDevices);
   }
 
   let voip: VoipReport | undefined;
@@ -329,45 +324,18 @@ async function waitForBlueprintLinks(
   bridge: Bridge,
   links: readonly Blueprint["links"][number][],
   timeoutMs = 30_000,
-): Promise<void> {
-  if (links.length === 0) return;
+): Promise<CanvasSnapshot> {
   const deadline = Date.now() + timeoutMs;
-  let pending: string[] = [];
-
-  while (Date.now() < deadline) {
-    pending = [];
-    for (const lnk of links) {
-      const tag = `${lnk.aDevice}/${lnk.aPort} <-> ${lnk.bDevice}/${lnk.bPort}`;
-      const reply = await bridge.sendAndWait(
-        linkUpStatusJs(lnk.aDevice, lnk.aPort, lnk.bDevice, lnk.bPort),
-        { timeoutMs: 5_000 },
-      );
-      if (reply === null || reply.startsWith("ERR")) {
-        pending.push(`${tag} (status=${reply ?? "timeout"})`);
-        continue;
-      }
-      if (!isLinkPresent(reply)) {
-        pending.push(`${tag} (${reply})`);
-      }
-    }
-    if (pending.length === 0) return;
+  let pending: readonly Blueprint["links"][number][];
+  do {
+    const snapshot = await captureSnapshot(bridge);
+    const present = new Set(snapshot.links.map(linkKey));
+    pending = links.filter(link => !present.has(linkKey(link)));
+    if (!pending.length) return snapshot;
     await sleep(500);
-  }
+  } while (Date.now() < deadline);
 
-  throw new Error(`links not present after ${timeoutMs}ms:\n  - ${pending.join("\n  - ")}`);
-}
-
-function isLinkPresent(status: string): boolean {
-  // Formato: "a:link=1|port=...|proto=...;b:...". El cook solo necesita
-  // que el cableado esté registrado en ambos extremos; el up/up real
-  // llega después del `no shutdown` que emite addressing.
-  const sides = status.split(";");
-  if (sides.length !== 2) return false;
-  for (const side of sides) {
-    const m = /link=(\d+)/.exec(side);
-    if (!m || m[1] !== "1") return false;
-  }
-  return true;
+  throw new Error(`links not present after ${timeoutMs}ms: ${pending.map(linkKey).join(", ")}`);
 }
 
 function sleep(ms: number): Promise<void> {

@@ -7,7 +7,6 @@ import type { Bridge } from "../bridge/http-bridge.js";
 import { nativeCall } from "./integration-common.js";
 import { fileSaveAsNoPromptJs, fileOpenJs, fileNewJs } from "../ipc/files.js";
 import { requireConnectedBridge, textResult, errorResult } from "./helpers.js";
-import { linkRegistry } from "../canvas/link-registry.js";
 const locks=new WeakMap<Bridge,Promise<unknown>>();
 
 export function nextCheckpointPath(directory:string,name:string):string {
@@ -51,14 +50,11 @@ server.tool("pt_checkpoint_pkt", "Create a numbered .pkt checkpoint and atomical
       const manifest=join(a.directory,"latest-checkpoint.json"),tmp=manifest+"."+crypto.randomUUID()+".tmp";
       writeFileSync(tmp,JSON.stringify(saved,null,2)+"\n",{flag:"wx"});renameSync(tmp,manifest);
       if(a.verifyReopen){
-        const links=linkRegistry.all();
         const cleared=await nativeCall(bridge,fileNewJs(false));if(!/^OK\|(?:true|undefined)$/.test(cleared))throw new Error(`Workspace replacement failed; saved checkpoint remains at ${saved.path}: ${cleared}`);
-        linkRegistry.clear();
         const opened=await nativeCall(bridge,fileOpenJs(saved.path));if(opened!=="OK|number|0")throw new Error(`Reopen failed; recover from ${saved.path}: ${opened}`);
         let after:unknown;const deadline=Date.now()+15000;
         do{await new Promise(r=>setTimeout(r,500));after=JSON.parse(await nativeCall(bridge,persistenceStateJs()));if(JSON.stringify(after)===JSON.stringify(before))break;}while(Date.now()<deadline);
         if(JSON.stringify(after)!==JSON.stringify(before))throw new Error(`Persistence mismatch; checkpoint retained: ${saved.path}. Before=${JSON.stringify(before)} After=${JSON.stringify(after)}`);
-        for(const l of links)linkRegistry.register(l.aDevice,l.aPort,l.bDevice,l.bPort);
       }
       return {...saved,persistenceVerified:a.verifyReopen};
     });locks.set(bridge,next);

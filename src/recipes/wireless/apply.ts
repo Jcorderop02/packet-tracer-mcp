@@ -1,6 +1,9 @@
+import { isIP } from "node:net";
 import type { Bridge } from "../../bridge/http-bridge.js";
+import { associateOpenDefault, installWirelessJs, readWirelessAssociation } from "../../ipc/wireless-client.js";
 import {
   configureApSsidJs,
+  setEndpointDhcpJs,
 } from "../../ipc/generator.js";
 import {
   apSummary,
@@ -12,17 +15,8 @@ import {
 } from "./cli.js";
 import type {
   ApSsidIntent,
-  ClientAssociationIntent,
   WirelessIntent,
 } from "./intents.js";
-
-/** Keep generic recipe associations bounded to verified native behavior.
- * The dedicated Default-profile tool handles the proven notebook workflow. */
-const WIRELESS_ASSOC_DEAD_END =
-  "Arbitrary SSID/profile association is not verified through PT 9 IPC. " +
-  "Use pt_install_wireless_adapter, pt_read_wireless_client and " +
-  "pt_associate_default_wireless for the verified open Default-profile workflow; " +
-  "otherwise configure the native WiFi profile in the GUI and verify the AP MAC. ";
 
 export interface WirelessAction {
   readonly device: string;
@@ -65,24 +59,49 @@ export async function applyApSsids(bridge: Bridge, aps: readonly ApSsidIntent[])
   return actions;
 }
 
-export async function applyClientAssociations(
-  _bridge: Bridge,
-  clients: readonly ClientAssociationIntent[],
-): Promise<WirelessAction[]> {
-  if (clients.length === 0) return [];
-  // Validamos para que errores de configuración afloren antes que el dead-end
-  // (así quien lea el error sabe que su intent estaba bien formado, el
-  // problema es la API).
-  for (const client of clients) validateClientAssociation(client);
-  const targets = clients.map(c => `${c.device}->${c.ssid}`).join(", ");
-  throw new Error(`${WIRELESS_ASSOC_DEAD_END} Affected clients: ${targets}.`);
+export function validateWirelessAssociations(intent: WirelessIntent): string | undefined {
+  if (!intent.clients?.length) return;
+  for (const client of intent.clients) {
+    validateClientAssociation(client);
+    if (client.ssid !== "Default" || client.psk !== undefined) {
+      throw new Error("Native client association supports only the open Default profile. Configure arbitrary SSIDs in the GUI.");
+    }
+  }
+  const aps = intent.aps?.filter(ap => ap.ssid === "Default" && ap.security === "open") ?? [];
+  if (aps.length !== 1) throw new Error("Client association requires exactly one AP advertising open Default in this intent.");
+  return aps[0]!.device;
 }
 
-export async function applyWireless(bridge: Bridge, w: WirelessIntent): Promise<WirelessReport> {
-  const actions: WirelessAction[] = [];
-  if (w.aps && w.aps.length > 0) actions.push(...await applyApSsids(bridge, w.aps));
-  if (w.clients && w.clients.length > 0) actions.push(...await applyClientAssociations(bridge, w.clients));
+export async function applyWireless(
+  bridge: Bridge, intent: WirelessIntent, placedDevices: readonly string[] = [],
+): Promise<WirelessReport> {
+  const ap = validateWirelessAssociations(intent);
+  const actions = await applyApSsids(bridge, intent.aps ?? []);
+  if (ap) {
+    for (const client of intent.clients ?? []) {
+      if (placedDevices.includes(client.device)) {
+        await push(bridge, `wireless adapter on ${client.device}`, installWirelessJs(client.device, true));
+      }
+      let state = await associateOpenDefault(bridge, client.device, ap);
+      if (client.dhcp ?? true) {
+        await push(bridge, `wireless DHCP on ${client.device}`, setEndpointDhcpJs(client.device, "Wireless0"));
+        const deadline = Date.now() + 45_000;
+        do {
+          await Bun.sleep(500);
+          state = await readWirelessAssociation(bridge, client.device);
+        } while (!(state.dhcp && assigned(state.ip)) && Date.now() < deadline);
+        if (!state.associated || !state.accessPoints.includes(ap) || !state.dhcp || !assigned(state.ip)) {
+          throw new Error(`DHCP or association not confirmed for ${client.device} on ${ap}`);
+        }
+      }
+      actions.push({ device: client.device, kind: "client-association", detail: clientSummary(client), reply: JSON.stringify(state) });
+    }
+  }
   return { actions, skipped: [] };
+}
+
+function assigned(ip: string): boolean {
+  return isIP(ip) === 4 && ip !== "0.0.0.0" && !ip.startsWith("169.254.");
 }
 
 export function summarizeWireless(r: WirelessReport): string {

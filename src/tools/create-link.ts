@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { Bridge } from "../bridge/http-bridge.js";
-import { linkRegistry } from "../canvas/link-registry.js";
 import { CABLE_TYPE_ID, type CableKind } from "../ipc/constants.js";
 import { createLinkJs } from "../ipc/generator.js";
 import { errorResult, requireConnectedBridge, textResult } from "./helpers.js";
@@ -96,13 +95,6 @@ export const registerCreateLinkTool: ToolModule = ({ bridge, server }) => {
       const err = checkPtReply(result, { device: device_a });
       if (err) return err;
       if (result === "true" || result === "OK") {
-        // PT 9 expone un objeto Link opaco — todos sus accesores
-        // (getDeviceA/B, getPortA/B, getEndpointA/B, getOtherEnd, getId,
-        // toString) fallan con TypeError o devuelven null. Sin esto el
-        // snapshot no puede reconstruir las parejas de cable y derivados
-        // (auto_layout, explainer) tratan a todo como huérfano. Ver
-        // src/canvas/link-registry.ts para el contexto completo.
-        linkRegistry.register(device_a, port_a, device_b, port_b);
         let msg = `Linked ${device_a}:${port_a} <-> ${device_b}:${port_b} (${cable}).`;
         if (cable === "serial") {
           msg +=

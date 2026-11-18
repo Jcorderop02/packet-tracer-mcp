@@ -7,7 +7,7 @@ import type { ToolModule } from "./types.js";
 const InputSchema = {
   device: z.string().min(1).describe("Router or switch name."),
   commands: z.string().min(1).describe(
-    "Multi-line CLI block. Lines are split, trimmed and sent one-by-one. Empty lines are ignored.",
+    "Multi-line CLI block. Commands run in order and stop at the first failure. Empty lines are ignored.",
   ),
   tail_chars: z.number().int().min(100).max(20_000).default(2_000)
     .describe("How many characters of trailing console output to return at most."),

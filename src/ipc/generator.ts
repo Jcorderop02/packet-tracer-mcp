@@ -1,3 +1,4 @@
+import { DEVICE_CATALOG } from "../catalog/devices.js";
 import { CABLE_TYPE_ID, DEVICE_TYPE_ID, type CableKind, type DeviceCategory } from "./constants.js";
 import { jsStr } from "./escape.js";
 import { withLabel, truncateForLabel } from "./label.js";
@@ -75,7 +76,7 @@ export interface AddDeviceArgs {
  * estaba encendido y cubre algún caso raro de modelo apagado por defecto.
  */
 export function addDeviceJs(args: AddDeviceArgs): string {
-  const typeId = DEVICE_TYPE_ID[args.category];
+  const typeId = DEVICE_CATALOG.get(args.model)?.nativePlacementType ?? DEVICE_TYPE_ID[args.category];
   return withLabel(
     `Creando ${args.category} ${args.name} (${args.model}) en (${args.x},${args.y})`,
     `(function(){` +
@@ -423,6 +424,7 @@ export function setEndpointStaticIpJs(args: EndpointStaticIp): string {
       `port.setIpSubnetMask(${jsStr(args.ip)},${jsStr(args.mask)});` +
       gwLine +
       (args.dns !== undefined ? `port.setDnsServerIp(${jsStr(args.dns)});` : "") +
+      `if(port.isDhcpClientOn()||String(port.getIpAddress())!==${jsStr(args.ip)}||String(port.getSubnetMask())!==${jsStr(args.mask)})return "ERR:static_ip_not_applied";` +
       `return "OK";` +
     `})()`,
   );
@@ -458,6 +460,7 @@ export function setEndpointDhcpJs(deviceName: string, portName?: string): string
       `if(!port)return "ERR:no_network_port";` +
       `d.setDhcpFlag(true);` +
       `port.setDhcpClientFlag(true);method=method+"+portDhcp("+port.getName()+")";` +
+      `if(!port.isDhcpClientOn())return "ERR:dhcp_not_enabled";` +
       `try{d.getCommandLine().enterCommand("ipconfig /renew");method=method+"+renew";}catch(e){}` +
       `return "OK:"+method;` +
     `})()`
