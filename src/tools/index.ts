@@ -1,3 +1,16 @@
+import { registerReadPlcIoTool } from "./read-plc-io.js";
+import { registerVerifyFtpTool } from "./verify-ftp.js";
+import { registerReadSyslogTool } from "./read-syslog.js";
+import { registerVerifyNtpTool } from "./verify-ntp.js";
+import { registerReadDiscoveryTool } from "./read-discovery.js";
+import { registerVerifyLabTool } from "./verify-lab.js";
+import { registerDiagnoseL2Tool } from "./diagnose-l2.js";
+import { registerVerifyFailoverTool } from "./verify-failover.js";
+import { registerReadActivityTool } from "./read-activity.js";
+import { registerServerWebTools } from "./server-web.js";
+import { registerPhysicalInventoryTool } from "./physical-inventory.js";
+import { registerSimulationEventsTools } from "./simulation-events.js";
+import { registerVerifyRoutingTool } from "./verify-routing.js";
 import type { ToolModule } from "./types.js";
 import { registerBridgeStatusTool } from "./bridge-status.js";
 import { registerListDevicesTool } from "./list-devices.js";
@@ -83,6 +96,19 @@ export const ALL_TOOLS: readonly ToolModule[] = [
   registerPlanReviewTool,
   // Health + catalog
   registerBridgeStatusTool,
+  registerServerWebTools,
+  registerPhysicalInventoryTool,
+  registerSimulationEventsTools,
+  registerVerifyRoutingTool,
+  registerReadSyslogTool,
+  registerVerifyNtpTool,
+  registerVerifyFtpTool,
+  registerReadDiscoveryTool,
+  registerReadPlcIoTool,
+  registerVerifyLabTool,
+  registerDiagnoseL2Tool,
+  registerVerifyFailoverTool,
+  registerReadActivityTool,
   registerReadEndpointTool,
   registerReadWirelessRouterTool,
   registerConfigureWirelessRouterTool,
